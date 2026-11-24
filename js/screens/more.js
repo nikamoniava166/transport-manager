@@ -12,12 +12,16 @@ Game.screens.more = {
       var lvlNow = Game.levelInfo(s.xp).level;
       var moneyLeft = (s.stars.lastMoneyAt && Date.now() - s.stars.lastMoneyAt < 24 * 3600000)
         ? 24 * 3600000 - (Date.now() - s.stars.lastMoneyAt) : 0;
+      var activeTrips = s.trips.filter(function(t){ return t.status === 'active'; }).length;
       var rows = Game.net.products().map(function(P){
-        var locked = P.id === 'money' && moneyLeft > 0;
+        var locked = (P.id === 'money' && moneyLeft > 0) || (P.id === 'hurry' && activeTrips === 0);
         var sub = P.desc;
         if (P.id === 'money') sub += ' · сейчас: ' + Game.fmt.money(25000 * lvlNow);
-        if (locked) sub += ' · ещё ' + Game.fmt.dur(moneyLeft);
-        var ico = P.id === 'money' ? '💳' : P.id === 'boost' ? '⭐' : '🔧';
+        if (P.id === 'hurry') sub += activeTrips > 0
+          ? ' · сейчас: ' + Game.plural(activeTrips, 'рейс в пути', 'рейса в пути', 'рейсов в пути')
+          : ' · нет активных рейсов';
+        if (P.id === 'money' && moneyLeft > 0) sub += ' · ещё ' + Game.fmt.dur(moneyLeft);
+        var ico = P.id === 'money' ? '💳' : P.id === 'boost' ? '⭐' : P.id === 'hurry' ? '⏩' : '🔧';
         return `
           <div class="list-item">
             <div class="li-ico">${ico}</div>

@@ -765,6 +765,22 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       if (Game.currentScreen) Game.navigate(Game.currentScreen, true);
       return { ok: true, msg: '🔧 Обслужено: машин ' + trucks + ', прицепов ' + trailers };
     }
+    if (productId === 'hurry') {
+      // все активные рейсы приезжают на 15 минут раньше; остаток меньше 15 мин — доставляется сразу
+      var cutMs = 15 * 60000, cnt = 0;
+      s.trips.forEach(function(t){
+        if (t.status !== 'active') return;
+        var newEnd = Math.max(t.startedAt, t.endAt - cutMs);
+        if (newEnd < t.endAt) { t.endAt = newEnd; cnt++; }
+      });
+      if (cnt === 0) return { ok: false, msg: 'Нет активных рейсов — ускорять нечего' };
+      Game.save();
+      var r = E.settle(false); // рейсы, «срезанные до нуля», приезжают сразу
+      if (r && r.resolved > 0) {
+        return { ok: true, msg: '⏩ Ускорено: ' + cnt + ' · сразу доставлено: ' + r.resolved + ' (+' + Game.fmt.money(r.earned) + ')' };
+      }
+      return { ok: true, msg: '⏩ ' + Game.plural(cnt, 'рейс приедет', 'рейса приедут', 'рейсов приедут') + ' на 15 минут раньше' };
+    }
     return { ok: false, msg: 'Неизвестный товар' };
   };
 

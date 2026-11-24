@@ -12,7 +12,8 @@
   var DEFAULT_PRODUCTS = [
     { id: 'money',  title: 'Денежный перевод', desc: '+25 000 ₽ × уровень, раз в сутки', stars: 25 },
     { id: 'boost',  title: 'Удвоенный доход',  desc: '×2 к оплате рейсов на 24 часа',    stars: 50 },
-    { id: 'repair', title: 'ТО всего парка',   desc: 'снимает износ со всех машин и прицепов', stars: 15 }
+    { id: 'repair', title: 'ТО всего парка',   desc: 'снимает износ со всех машин и прицепов', stars: 15 },
+    { id: 'hurry',  title: 'Ускорение рейсов', desc: '−15 минут ко всем активным рейсам', stars: 10 }
   ];
 
   var tg = window.Telegram && window.Telegram.WebApp;
