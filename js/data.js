@@ -18,7 +18,7 @@ Game.data = {
   // Пока путь не задан — салон рисует заглушку 🚛. Картинки можно подключить позже без правок кода.
   trucks: [
     { id:'gazelle', name:'Газель Next',  price:25000,   cap:1.5, speed:95,  cons:12, rel:70, lvl:1,  img:'img/trucks/gazelle.jpg' },
-    { id:'bychok',  name:'«Бычок» ЗАО',  price:60000,   cap:3,   speed:90,  cons:14, rel:75, lvl:2,  img:'' },
+    { id:'bychok',  name:'«Бычок» ЗАО',  price:60000,   cap:3,   speed:90,  cons:14, rel:75, lvl:2,  img:'img/trucks/bychok.jpg' },
     { id:'zil',     name:'ЗИЛ-130',      price:120000,  cap:5,   speed:85,  cons:18, rel:78, lvl:3,  img:'' },
     { id:'kamaz',   name:'КамАЗ-5320',   price:300000,  cap:10,  speed:90,  cons:25, rel:82, lvl:5,  img:'' },
     { id:'maz',     name:'МАЗ-6430',     price:600000,  cap:20,  speed:95,  cons:30, rel:85, lvl:8,  img:'' },
