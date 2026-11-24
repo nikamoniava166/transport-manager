@@ -90,3 +90,5 @@ docs/game-design.md   — дизайн-документ
 ## Дизайн и баланс
 
 Все механики, таблицы и формулы — в [docs/game-design.md](docs/game-design.md).
+
+Картинки машин — в `img/trucks/`; путь прописывается в поле `img` модели в `js/data.js`. ГАЗель Next — фото с Wikimedia Commons (лицензия CC0, общественное достояние).
