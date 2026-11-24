@@ -17,6 +17,7 @@
       trucks: [
         { uid: 101, tid: 'gazelle', wear: 10, up: {} }
       ],
+      trailers: [],
       drivers: [
         { uid: 102, name: 'Иван Петров', skills: { speed: 3, care: 4, luck: 3 }, share: 20, restUntil: 0 }
       ],
@@ -56,6 +57,7 @@
     out.oplog     = Array.isArray(out.oplog)     ? out.oplog     : [];
     out.lastMaintAt = out.lastMaintAt || Date.now();
     out.trucks   = Array.isArray(out.trucks)   ? out.trucks   : d.trucks;
+    out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
     out.drivers  = Array.isArray(out.drivers)  ? out.drivers  : d.drivers;
     out.trips    = Array.isArray(out.trips)    ? out.trips    : [];
     out.uidSeq   = Math.max(out.uidSeq || 100, 100);

@@ -50,9 +50,19 @@ Game.data = {
     { id:'tech',      name:'Бытовая техника',      min:0.2, max:2,  lvl:2,  mult:1.3 },
     { id:'agro',      name:'Сельхозпродукция',     min:1,   max:15, lvl:3,  mult:1.1 },
     { id:'elec',      name:'Электроника',          min:0.1, max:1,  lvl:4,  mult:1.8 },
-    { id:'reefer',    name:'Рефрижераторный груз', min:1,   max:10, lvl:6,  mult:1.5 },
+    { id:'reefer',    name:'Рефрижераторный груз', min:1,   max:10, lvl:6,  mult:1.5, flags:['reefer'] },
     { id:'container', name:'Контейнер',            min:10,  max:25, lvl:8,  mult:1.4 },
-    { id:'adr',       name:'Опасный груз (ADR)',   min:5,   max:20, lvl:10, mult:2.0 },
+    { id:'adr',       name:'Опасный груз (ADR)',   min:5,   max:20, lvl:10, mult:2.0, flags:['adr'] },
+  ],
+
+  // Прицепы: minCap — минимальная грузоподъёмность тягача (базовая, без прицепа),
+  // consAdd — надбавка к расходу топлива, flags — какие требования грузов закрывают
+  trailers: [
+    { id:'light',     name:'Лёгкий прицеп',          price:35000,  capAdd:1.5, minCap:1.5, consAdd:0.10, flags:[]          },
+    { id:'tarp',      name:'Тентованный прицеп',     price:120000, capAdd:8,   minCap:5,   consAdd:0.15, flags:[]          },
+    { id:'reefer',    name:'Рефрижераторный прицеп', price:250000, capAdd:10,  minCap:10,  consAdd:0.20, flags:['reefer']  },
+    { id:'tank',      name:'Цистерна (ADR)',         price:400000, capAdd:12,  minCap:20,  consAdd:0.20, flags:['adr']      },
+    { id:'roadtrain', name:'Полуприцеп «Автопоезд»', price:900000, capAdd:20,  minCap:25,  consAdd:0.25, flags:[]          },
   ],
 
   upgrades: [
@@ -72,6 +82,7 @@ Game.data = {
 };
 
 Game.truck = function(id){ return Game.data.trucks.find(function(t){ return t.id === id; }); };
+Game.trailerType = function(id){ return Game.data.trailers.find(function(t){ return t.id === id; }); };
 Game.city  = function(id){ return Game.data.cities.find(function(c){ return c.id === id; }); };
 
 // Расстояние между городами, км (гаверсинус × коэффициент дорог)

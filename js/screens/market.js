@@ -13,7 +13,19 @@ Game.screens.market = {
       var cargo = Game.data.cargo.find(function(c){ return c.id === o.cargoId; });
       var from = Game.city(o.from).name, to = Game.city(o.to).name;
       var min = Math.round(Math.max(2, Math.min(30, o.km / 40)) * (o.urgent ? 0.75 : 1));
-      var can = s.trucks.some(function(tr){ return !E.isBusy(tr.uid) && E.effTruck(tr).cap >= o.weight; });
+      var flags = o.flags || [];
+      var flagTags = flags.map(function(f){ return f === 'reefer' ? '<span class="tag accent">❄️ нужен реф-прицеп</span>' : '<span class="tag warn">☣️ нужна цистерна ADR</span>'; }).join('');
+      function fits(tr){
+        if (E.isBusy(tr.uid)) return false;
+        var e = E.effTruck(tr);
+        return e.cap >= o.weight && flags.every(function(f){ return e.flags.indexOf(f) >= 0; });
+      }
+      var can = s.trucks.some(fits);
+      var anyFlagged = s.trucks.some(function(tr){
+        var e = E.effTruck(tr);
+        return flags.every(function(f){ return e.flags.indexOf(f) >= 0; });
+      });
+      var noFitLabel = (flags.length && !anyFlagged) ? 'Нужен прицеп: ' + (flags[0] === 'reefer' ? 'рефрижератор' : 'цистерна') : 'Нет свободной машины под груз';
       var panel = '';
       if (Game.ui.dispatchOrderUid === o.uid) panel = dispatchPanel(o);
       return `
@@ -23,15 +35,21 @@ Game.screens.market = {
           <div style="margin-top:8px">
             <span class="tag accent">💰 ${Game.fmt.money(o.pay)}</span>
             <span class="tag">нужно ≥ ${Game.fmt.ton(o.weight)} грузоподъёмности</span>
+            ${flagTags}
           </div>
-          ${panel || `<button class="btn" data-open="${o.uid}" ${can ? '' : 'disabled'}>${can ? '🚚 Отправить машину' : 'Нет свободной машины под груз'}</button>`}
+          ${panel || `<button class="btn" data-open="${o.uid}" ${can ? '' : 'disabled'}>${can ? '🚚 Отправить машину' : noFitLabel}</button>`}
         </div>`;
     }
 
     function dispatchPanel(o){
+      var flags = o.flags || [];
+      function fits(tr){
+        var e = E.effTruck(tr);
+        return e.cap >= o.weight && flags.every(function(f){ return e.flags.indexOf(f) >= 0; });
+      }
       var freeTrucks = s.trucks.filter(function(tr){ return !E.isBusy(tr.uid); });
-      var fitTrucks = freeTrucks.filter(function(tr){ return E.effTruck(tr).cap >= o.weight; });
-      var unfit = freeTrucks.filter(function(tr){ return E.effTruck(tr).cap < o.weight; });
+      var fitTrucks = freeTrucks.filter(fits);
+      var unfit = freeTrucks.filter(function(tr){ return !fits(tr); });
 
       // выбранная машина (по умолчанию — первая подходящая)
       var selTruck = null;
@@ -62,8 +80,10 @@ Game.screens.market = {
 
       function truckChips(list, fit){
         return list.map(function(tr){
+          var e = E.effTruck(tr);
           var sel = selTruck && selTruck.uid === tr.uid;
-          return `<button class="chip ${sel ? 'sel' : ''}" ${fit ? '' : 'disabled'} data-tsel="${tr.uid}">${Game.truck(tr.tid).name} · ${Game.fmt.ton(E.effTruck(tr).cap)}</button>`;
+          var hint = (!fit && flags.some(function(f){ return e.flags.indexOf(f) < 0; })) ? ' · нужен прицеп' : '';
+          return `<button class="chip ${sel ? 'sel' : ''}" ${fit ? '' : 'disabled'} data-tsel="${tr.uid}">${Game.truck(tr.tid).name} · ${Game.fmt.ton(e.cap)}${hint}</button>`;
         }).join('');
       }
 

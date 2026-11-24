@@ -22,13 +22,24 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
   E.effTruck = function(tr){
     var T = Game.truck(tr.tid);
     var up = tr.up || {};
+    var trailer = E.trailerOf(tr.uid);
+    var TT = trailer ? Game.trailerType(trailer.tid) : null;
     return {
       uid: tr.uid, tid: tr.tid, name: T.name, price: T.price,
-      cap: T.cap,
+      baseCap: T.cap,
+      cap: T.cap + (TT ? TT.capAdd : 0),
+      flags: TT ? TT.flags.slice() : [],
+      trailer: trailer,
       speed: T.speed + 5 * (up.engine || 0),
-      cons: Math.max(4, T.cons - 2 * (up.fuel || 0)),
+      cons: Math.round(Math.max(4, T.cons - 2 * (up.fuel || 0)) * (1 + (TT ? TT.consAdd : 0)) * 10) / 10,
       rel: Math.min(99, T.rel + 5 * (up.service || 0))
     };
+  };
+
+  E.trailerOf = function(truckUid){
+    var found = null;
+    (Game.state.trailers || []).forEach(function(t){ if (t.attachedTo === truckUid) found = t; });
+    return found;
   };
 
   E.isBusy = function(truckUid){
@@ -140,6 +151,75 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return { ok: true, msg: '🏢 Офис расширен — теперь ' + E.staffSlots() + ' рабочих мест' };
   };
 
+  // ---------- прицепы ----------
+
+  E.trailerRepairCost = function(trailer){
+    var TT = Game.trailerType(trailer.tid);
+    if (trailer.wear <= 0) return 0;
+    return Math.max(100, Math.round(TT.price * Game.data.repairRate * trailer.wear / 100) * 100);
+  };
+
+  E.buyTrailer = function(tid){
+    var s = Game.state;
+    var TT = Game.trailerType(tid);
+    if (!TT) return { ok: false, msg: 'Прицеп не найден' };
+    if (s.money < TT.price) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(TT.price) };
+    s.money -= TT.price; s.stats.spent += TT.price;
+    var trailer = { uid: Game.uid(), tid: tid, wear: 0, attachedTo: null };
+    s.trailers.push(trailer);
+    E.logOp('out', TT.price, 'Покупка прицепа: ' + TT.name);
+    Game.save();
+    return { ok: true, msg: '🛻 ' + TT.name + ' на складе — прикрепите к грузовику', trailer: trailer };
+  };
+
+  // Тягач тянет прицеп, если его базовая грузоподъёмность не ниже minCap
+  E.canTow = function(truckUid, tid){
+    var tr = null;
+    Game.state.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!tr) return false;
+    var TT = Game.trailerType(tid);
+    return !!TT && Game.truck(tr.tid).cap >= TT.minCap;
+  };
+
+  E.attachTrailer = function(trailerUid, truckUid){
+    var s = Game.state;
+    var trailer = null;
+    s.trailers.forEach(function(t){ if (t.uid === trailerUid) trailer = t; });
+    if (!trailer) return { ok: false, msg: 'Прицеп не найден' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе' };
+    if (E.trailerOf(truckUid)) return { ok: false, msg: 'У машины уже есть прицеп' };
+    if (!E.canTow(truckUid, trailer.tid)) return { ok: false, msg: 'Тягачу не хватает грузоподъёмности' };
+    trailer.attachedTo = truckUid;
+    Game.save();
+    return { ok: true, msg: '🔗 ' + Game.trailerType(trailer.tid).name + ' прицеплен' };
+  };
+
+  E.detachTrailer = function(trailerUid){
+    var s = Game.state;
+    var trailer = null;
+    s.trailers.forEach(function(t){ if (t.uid === trailerUid) trailer = t; });
+    if (!trailer || !trailer.attachedTo) return { ok: false, msg: 'Прицеп не прикреплён' };
+    if (E.isBusy(trailer.attachedTo)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    trailer.attachedTo = null;
+    Game.save();
+    return { ok: true, msg: 'Прицеп отцеплен' };
+  };
+
+  E.repairTrailer = function(trailerUid){
+    var s = Game.state;
+    var trailer = null;
+    s.trailers.forEach(function(t){ if (t.uid === trailerUid) trailer = t; });
+    if (!trailer || trailer.wear <= 0) return { ok: false, msg: 'Ремонт не нужен' };
+    if (trailer.attachedTo && E.isBusy(trailer.attachedTo)) return { ok: false, msg: 'Прицеп в рейсе' };
+    var cost = E.trailerRepairCost(trailer);
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    s.money -= cost; s.stats.spent += cost;
+    trailer.wear = 0;
+    E.logOp('out', cost, 'Ремонт прицепа: ' + Game.trailerType(trailer.tid).name);
+    Game.save();
+    return { ok: true, msg: '🔧 Прицеп отремонтирован · −' + Game.fmt.money(cost) };
+  };
+
   // ---------- деньги ----------
 
   E.orderPay = function(km, weight, mult, urgent){
@@ -214,11 +294,25 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var lvl = Game.levelInfo(s.xp).level;
     var cities = Game.data.cities.filter(function(c){ return c.lvl <= lvl; });
     if (cities.length < 2) return null;
-    var fleetCap = Math.max.apply(null, s.trucks.map(function(t){ return Game.truck(t.tid).cap; }));
-    var cargos = Game.data.cargo.filter(function(c){ return c.lvl <= lvl && c.min <= fleetCap; });
+    // грузоподъёмность автопарка (с прицепами) — общая и по флагам
+    var fleetCap = 0;
+    var flaggedCap = {};
+    s.trucks.forEach(function(tr){
+      var e = E.effTruck(tr);
+      if (e.cap > fleetCap) fleetCap = e.cap;
+      e.flags.forEach(function(f){ if (!flaggedCap[f] || e.cap > flaggedCap[f]) flaggedCap[f] = e.cap; });
+    });
+    var cargos = Game.data.cargo.filter(function(c){
+      if (c.lvl > lvl || c.min > fleetCap) return false;
+      var fl = c.flags || [];
+      for (var i = 0; i < fl.length; i++) if (!flaggedCap[fl[i]]) return false;
+      return true;
+    });
     if (!cargos.length) return null;
     var cargo = Game.pick(cargos);
-    var weight = Math.round(Game.rnd(cargo.min, Math.min(cargo.max, fleetCap)) * 10) / 10;
+    var maxW = Math.min(cargo.max, fleetCap);
+    (cargo.flags || []).forEach(function(f){ if (flaggedCap[f] < maxW) maxW = flaggedCap[f]; });
+    var weight = Math.round(Game.rnd(cargo.min, maxW) * 10) / 10;
     var a = Game.pick(cities), b;
     do { b = Game.pick(cities); } while (b.id === a.id);
     var km = Game.dist(a.id, b.id);
@@ -230,6 +324,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       weight: weight,
       pay: E.orderPay(km, weight, cargo.mult, urgent),
       urgent: urgent,
+      flags: (cargo.flags || []).slice(),
       expiresAt: Date.now() + Game.rndInt(10, 30) * 60000
     };
   };
@@ -263,6 +358,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (dr.restUntil > Date.now()) return { ok: false, msg: 'Водитель отдыхает' };
     var eff = E.effTruck(tr);
     if (eff.cap < order.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
+    var missing = (order.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
+    if (missing.length) return { ok: false, msg: missing[0] === 'reefer' ? 'Нужен рефрижераторный прицеп' : 'Нужна цистерна (ADR)' };
     var fuel = E.fuelCost(order.km, eff.cons);
     var advance = Math.round(order.pay * dr.share / 100);
     if (s.money < fuel + advance) return { ok: false, msg: 'Не хватает на топливо и аванс: ' + Game.fmt.money(fuel + advance) };
@@ -352,6 +449,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       var wearAdd = Math.min(8, 3 + o.km / 500) * (1 - care * 0.03) * (1 - E.mechanicWearReduction());
       if (t.brk) wearAdd += 15;
       tr.wear = Math.min(100, Math.round((tr.wear + wearAdd) * 10) / 10);
+      // прицеп изнашивается чуть медленнее тягача
+      var trailer = E.trailerOf(tr.uid);
+      if (trailer) trailer.wear = Math.min(100, Math.round((trailer.wear + wearAdd * 0.8) * 10) / 10);
     }
     // водитель отдыхает
     var d2 = null;
