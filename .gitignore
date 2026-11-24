@@ -2,3 +2,4 @@
 .zwork/
 tools/
 *.log
+worker/.wrangler/
