@@ -18,12 +18,13 @@ js/data.js            — таблицы и константы
 js/state.js           — состояние, сейвы, миграции (localStorage + Telegram CloudStorage)
 js/ui.js              — формат, тосты, haptic, тема
 js/economy.js         — экономика: заказы, рейсы, события, персонал, улучшения, салон б/у
+js/net.js             — сеть: рейтинг и покупки Telegram Stars (выключено без BACKEND_URL)
 js/screens/*.js       — экраны (home, market, trips, garage, salon, office, more)
 js/app.js             — инициализация, роутер, история «назад»
 docs/game-design.md   — дизайн-документ
 ```
 
-Сборка не нужна — это статический сайт.
+Сборка не нужна — это статический сайт. Бэкенд для Stars и рейтинга — отдельный Cloudflare Worker в `worker/` (не обязателен для игры): [worker/worker.js](worker/worker.js), инструкция — [docs/backend.md](docs/backend.md).
 
 ## Локальный запуск
 

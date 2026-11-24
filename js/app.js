@@ -59,7 +59,8 @@ Game.show = Game.navigate;
 
 Game.tick = function(){
   if (!Game.state || !Game.economy) return;
-  Game.economy.settle(false);
+  var r = Game.economy.settle(false);
+  if (r && r.resolved > 0 && Game.net && Game.net.onTripsResolved) Game.net.onTripsResolved(r);
   var moneyChanged = Game.state.money !== Game.ui.moneyShown;
   Game.ui.moneyShown = Game.state.money;
   Game.updateHUD();
@@ -103,6 +104,7 @@ Game.init = function(){
     Game.haptic('ok');
     Game.updateHUD();
   }
+  if (Game.net && Game.net.onTripsResolved) Game.net.onTripsResolved(r);
 
   var tabs = document.querySelectorAll('.tab');
   tabs.forEach(function(b){
@@ -136,7 +138,10 @@ Game.init = function(){
   setInterval(Game.tick, 1000);
   setInterval(Game.save, 15000);
   document.addEventListener('visibilitychange', function(){
-    if (document.hidden) Game.save();
+    if (document.hidden) {
+      Game.save();
+      if (Game.net && Game.net.syncNow) Game.net.syncNow(); // отправить прогресс в таблицу при уходе
+    }
   });
   window.addEventListener('beforeunload', function(){ Game.save(); });
 };

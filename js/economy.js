@@ -504,9 +504,11 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     t.status = 'done';
     t.finishedAt = t.endAt;
     var o = t.order;
-    // бухгалтеры: оптимизация выплат (+% к оплате, суммарно до 15%)
+    // бухгалтеры: оптимизация выплат (+% к оплате, суммарно до 15%);
+    // «Удвоенный доход» из магазина Stars: ×2 к оплате, пока действует
     var bonusPct = E.accountantBonus();
-    var payout = Math.round(t.payFinal * (1 + bonusPct / 100));
+    var boost = (s.stars && s.stars.boostUntil && Date.now() < s.stars.boostUntil) ? 2 : 1;
+    var payout = Math.round(t.payFinal * (1 + bonusPct / 100) * boost);
     // оклады офисного персонала — с каждого доставленного рейса
     var salaries = E.staffSalaries();
     var charged = (salaries > 0 && s.money + payout >= salaries) ? salaries : 0;
@@ -727,6 +729,43 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     s.staff = s.staff.filter(function(x){ return x.uid !== staffUid; });
     Game.save();
     return { ok: true, msg: '👋 ' + p.name + ' уволен' };
+  };
+
+  // ---------- покупки за Telegram Stars ----------
+
+  // Награды — мягкие, «без сильного облегчения»: контент и уровни не продаются.
+  E.grantStarsProduct = function(productId){
+    var s = Game.state;
+    if (productId === 'money') {
+      // раз в сутки, сумма привязана к уровню — не обгоняет прогрессию
+      if (s.stars.lastMoneyAt && Date.now() - s.stars.lastMoneyAt < 24 * 3600000) {
+        return { ok: false, msg: 'Денежный перевод доступен раз в сутки' };
+      }
+      var lvl = Game.levelInfo(s.xp).level;
+      var amount = 25000 * lvl;
+      s.money += amount;
+      s.stars.lastMoneyAt = Date.now();
+      E.logOp('in', amount, 'Пополнение за Stars');
+      Game.save();
+      Game.updateHUD();
+      return { ok: true, msg: '💳 Зачислено ' + Game.fmt.money(amount) };
+    }
+    if (productId === 'boost') {
+      // продлевает текущий буст, а не перезаписывает
+      var base = Math.max(Date.now(), s.stars.boostUntil || 0);
+      s.stars.boostUntil = base + 24 * 3600000;
+      Game.save();
+      return { ok: true, msg: '⭐ Доход ×2 — активен до ' + new Date(s.stars.boostUntil).toLocaleTimeString('ru-RU') };
+    }
+    if (productId === 'repair') {
+      var trucks = 0, trailers = 0;
+      s.trucks.forEach(function(t){ if (t.wear > 0) { t.wear = 0; trucks++; } });
+      s.trailers.forEach(function(t){ if (t.wear > 0) { t.wear = 0; trailers++; } });
+      Game.save();
+      if (Game.currentScreen) Game.navigate(Game.currentScreen, true);
+      return { ok: true, msg: '🔧 Обслужено: машин ' + trucks + ', прицепов ' + trailers };
+    }
+    return { ok: false, msg: 'Неизвестный товар' };
   };
 
   // Журнал операций для бухгалтерии

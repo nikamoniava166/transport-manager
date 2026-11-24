@@ -28,6 +28,7 @@
       trips: [],
       market: { orders: [], refreshAt: 0 },
       salon: { list: [], refreshAt: 0 },
+      stars: { boostUntil: 0, lastMoneyAt: 0 },
       stats: { tripsDone: 0, earned: 0, spent: 0, km: 0, breakdowns: 0 },
       settings: { sound: true, haptic: true },
       created: Date.now(),
@@ -45,6 +46,7 @@
     out.staffMarket   = Object.assign({}, d.staffMarket,   (st && st.staffMarket)   || {});
     out.salon         = Object.assign({}, d.salon,         (st && st.salon)         || {});
     out.salon.list    = Array.isArray(out.salon.list) ? out.salon.list : [];
+    out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
     // старые сейвы: кандидаты-водители из driversMarket переезжают в общий staffMarket
     if (st && st.driversMarket && Array.isArray(st.driversMarket.list)) {
       var dm = st.driversMarket, sm = out.staffMarket;
