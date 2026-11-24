@@ -28,6 +28,11 @@ Game.navigate = function(id, keepScroll){
     if (window.__errors) window.__errors.push('render ' + id + ': ' + ((e && e.message) || e));
   }
   root.scrollTop = st;
+  if (!keepScroll) {
+    root.classList.remove('anim');
+    void root.offsetWidth;
+    root.classList.add('anim');
+  }
 
   // Кнопка «Назад» в шапке Telegram: показываем на всех экранах, кроме главной
   var tg = window.Telegram && window.Telegram.WebApp;

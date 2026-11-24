@@ -46,12 +46,20 @@ Game.toast = function(msg, type){
 
 Game.haptic = function(kind){
   var tg = window.Telegram && window.Telegram.WebApp;
-  if (!tg || !tg.HapticFeedback || (Game.state && Game.state.settings && !Game.state.settings.haptic)) return;
-  try {
-    if (kind === 'ok')       tg.HapticFeedback.notificationOccurred('success');
-    else if (kind === 'err') tg.HapticFeedback.notificationOccurred('error');
-    else                     tg.HapticFeedback.impactOccurred('light');
-  } catch (e) {}
+  if (tg && tg.HapticFeedback && !(Game.state && Game.state.settings && !Game.state.settings.haptic)) {
+    try {
+      if (kind === 'ok' || kind === 'level') tg.HapticFeedback.notificationOccurred('success');
+      else if (kind === 'err') tg.HapticFeedback.notificationOccurred('error');
+      else tg.HapticFeedback.impactOccurred('light');
+    } catch (e) {}
+  }
+  // звук синхронно с откликом
+  if (Game.sound) {
+    if (kind === 'ok') Game.sound.play('ok');
+    else if (kind === 'err') Game.sound.play('err');
+    else if (kind === 'level') Game.sound.play('level');
+    else Game.sound.play('tap');
+  }
 };
 
 Game.FALLBACK_THEMES = {
@@ -108,8 +116,44 @@ Game.applyTheme = function(){
 Game.updateHUD = function(){
   var m = document.getElementById('hud-money');
   var l = document.getElementById('hud-level');
-  if (m && Game.state) m.textContent = Game.fmt.money(Game.state.money || 0);
-  if (l && Game.state) l.textContent = 'Ур. ' + Game.levelInfo(Game.state.xp).level;
+  if (!Game.state) return;
+  if (m) {
+    var money = Game.state.money || 0;
+    var txt = Game.fmt.money(money);
+    if (m.textContent !== txt) {
+      if (Game.ui.hudMoney != null && money !== Game.ui.hudMoney) {
+        m.classList.remove('pop');
+        void m.offsetWidth;
+        m.classList.add('pop');
+      }
+      m.textContent = txt;
+      Game.ui.hudMoney = money;
+    }
+  }
+  if (l) l.textContent = 'Ур. ' + Game.levelInfo(Game.state.xp).level;
+};
+
+// Праздничные частицы при повышении уровня
+Game.confetti = function(){
+  var box = document.getElementById('confetti');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'confetti';
+    box.className = 'confetti';
+    document.body.appendChild(box);
+  }
+  var emojis = ['🎉','⭐','💰','🚚','✨'];
+  for (var i = 0; i < 26; i++) {
+    var s = document.createElement('span');
+    s.className = 'cf';
+    s.textContent = emojis[i % emojis.length];
+    s.style.left = (4 + Math.random() * 92) + '%';
+    s.style.fontSize = (16 + Math.random() * 10) + 'px';
+    s.style.animationDelay = (Math.random() * 0.5) + 's';
+    s.style.animationDuration = (1.6 + Math.random() * 1.3) + 's';
+    box.appendChild(s);
+    (function(el){ setTimeout(function(){ el.remove(); }, 3400); })(s);
+  }
 };
 
 // Живые таймеры и прогресс-бары активных рейсов на любом экране

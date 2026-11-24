@@ -317,7 +317,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var after = Game.levelInfo(s.xp).level;
     if (after > before && Game.ui.ready) {
       Game.toast('🎉 Уровень ' + after + '! Открыты новые возможности', 'ok');
-      Game.haptic('ok');
+      Game.haptic('level');
+      if (Game.confetti) Game.confetti();
     }
   };
 
@@ -400,6 +401,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         var word = Game.plural(resolved, 'рейс доставлен', 'рейса доставлено', 'рейсов доставлено');
         Game.toast('✅ ' + word + ' · +' + Game.fmt.money(earned), 'ok');
         Game.haptic('ok');
+        if (Game.sound) Game.sound.play('coin');
       }
       Game.save();
     } else if (lastEv && !silent) {

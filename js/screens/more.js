@@ -36,7 +36,7 @@ Game.screens.more = {
     if (soundBtn) soundBtn.onclick = function(){
       s.settings.sound = !s.settings.sound;
       Game.save();
-      Game.toast('Звук появится на шаге полировки — настройка уже сохраняется');
+      Game.toast(s.settings.sound ? '🔊 Звук включён' : '🔇 Звук выключен');
       Game.navigate('more', true);
     };
 

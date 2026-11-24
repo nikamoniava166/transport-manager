@@ -2,6 +2,13 @@
 
 Экономический менеджер с таймерами: биржа заказов, автопарк, водители, офис с бухгалтерами и механиками, улучшение гаража и офиса. Работает как Telegram Mini App и как обычная веб-страница (для разработки).
 
+## Опубликовано
+
+- Игра (GitHub Pages): https://nikamoniava166.github.io/transport-manager/
+- Бот: [@RussianTruckManager_bot](https://t.me/RussianTruckManager_bot)
+- Мини-приложение (прямая ссылка): https://t.me/RussianTruckManager_bot/RussianTruckManager
+- Обложка 640×360: `cover-640x360.png` (загружена в BotFather при создании мини-приложения)
+
 ## Структура
 
 ```
