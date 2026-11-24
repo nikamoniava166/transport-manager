@@ -106,6 +106,9 @@ Game.init = function(){
   }
   if (Game.net && Game.net.onTripsResolved) Game.net.onTripsResolved(r);
 
+  // бонусы от владельца игры (если выданы, пока игрок не заходил)
+  if (Game.net && Game.net.enabled && Game.net.claimGrants) Game.net.claimGrants();
+
   var tabs = document.querySelectorAll('.tab');
   tabs.forEach(function(b){
     b.addEventListener('click', function(){
@@ -141,6 +144,8 @@ Game.init = function(){
     if (document.hidden) {
       Game.save();
       if (Game.net && Game.net.syncNow) Game.net.syncNow(); // отправить прогресс в таблицу при уходе
+    } else if (Game.net && Game.net.enabled && Game.net.claimGrants) {
+      Game.net.claimGrants(); // могли выдать бонус, пока приложение было свёрнуто
     }
   });
   window.addEventListener('beforeunload', function(){ Game.save(); });

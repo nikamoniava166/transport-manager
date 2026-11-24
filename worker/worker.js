@@ -131,6 +131,20 @@ export default {
       return json({ ok: true, state: row ? row.state : null, savedAt: row ? row.updated_at : 0 });
     }
 
+    // Бонусы игрокам (выдаёт владелец игры через INSERT в grants): отдаём и сразу помечаем выданными
+    if (url.pathname === '/grant') {
+      const rows = await db.prepare(
+        'SELECT id, kind, amount, note FROM grants WHERE user_id = ?1 AND claimed_at IS NULL ORDER BY id'
+      ).bind(user.id).all();
+      const list = rows.results || [];
+      if (list.length) {
+        await db.prepare(
+          'UPDATE grants SET claimed_at = ?1 WHERE user_id = ?2 AND claimed_at IS NULL'
+        ).bind(now, user.id).run();
+      }
+      return json({ ok: true, grants: list });
+    }
+
     // Топ-20 по капиталу + место текущего игрока
     if (url.pathname === '/leaderboard') {
       const top = await db.prepare(

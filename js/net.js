@@ -88,6 +88,19 @@
   // Резервная копия сейва на сервере: восстановление, когда локаль и облако пусты
   N.restore = function(cb){ api('/restore', {}, cb); };
 
+  // Бонусы от владельца игры (таблица grants у воркера): забираем при старте
+  // и при возврате в приложение; выдача одноразовая — помечается на сервере при отдаче
+  N.claimGrants = function(){
+    if (!N.enabled()) return;
+    api('/grant', {}, function(res){
+      if (!res || !res.ok || !Array.isArray(res.grants)) return;
+      res.grants.forEach(function(g){
+        var r = Game.economy.applyGrant(g);
+        if (r && r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); N.syncSoon(); }
+      });
+    });
+  };
+
   // --- покупки за Stars: счёт у воркера → окно Telegram → активация ---
   N.buy = function(productId, cb){
     api('/purchase', { productId: productId }, function(res){

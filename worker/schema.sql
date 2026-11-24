@@ -29,3 +29,14 @@ CREATE TABLE IF NOT EXISTS saves (
   state      TEXT NOT NULL,            -- полный JSON сейва
   updated_at INTEGER NOT NULL
 );
+
+-- Бонусы игрокам: создаёт владелец игры (INSERT), клиент забирает одноразово через /grant
+CREATE TABLE IF NOT EXISTS grants (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL,
+  kind       TEXT NOT NULL,            -- пока только 'money'
+  amount     INTEGER NOT NULL,
+  note       TEXT,
+  created_at INTEGER NOT NULL,
+  claimed_at INTEGER                   -- заполнено = забрано клиентом
+);

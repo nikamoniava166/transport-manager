@@ -786,6 +786,21 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return { ok: false, msg: 'Неизвестный товар' };
   };
 
+  // ---------- бонусы (выдаёт владелец игры через воркер: grants → /grant) ----------
+
+  E.applyGrant = function(g){
+    var s = Game.state;
+    if (g && g.kind === 'money' && g.amount > 0) {
+      var amount = Math.round(g.amount);
+      s.money += amount;
+      E.logOp('in', amount, g.note || 'Бонус');
+      Game.save();
+      Game.updateHUD();
+      return { ok: true, msg: '🎁 ' + (g.note || 'Бонус') + ': +' + Game.fmt.money(amount) };
+    }
+    return { ok: false };
+  };
+
   // Журнал операций для бухгалтерии
   E.logOp = function(cat, amount, note){
     var s = Game.state;
