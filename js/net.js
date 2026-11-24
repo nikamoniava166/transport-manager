@@ -6,7 +6,7 @@
 // BACKEND_URL — адрес воркера. Пустая строка = функции выключены:
 // магазин и рейтинг не показываются, игра работает полностью локально (сейчас так и есть).
 (function(){
-  var BACKEND_URL = ''; // ← впиши сюда адрес воркера после деплоя, например 'https://transport-manager-backend.<аккаунт>.workers.dev'
+  var BACKEND_URL = 'https://transport-manager-backend.nikamoniava166.workers.dev'; // развёрнут: docs/backend.md
 
   // Витрина магазина (цены итоговые задаёт воркер при создании счёта; тут — для подписи)
   var DEFAULT_PRODUCTS = [

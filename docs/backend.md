@@ -2,6 +2,8 @@
 
 Один **Cloudflare Worker + D1** (worker/). Клиент общается с ним из [js/net.js](../js/net.js); пока адрес воркера не вписан в `BACKEND_URL`, магазин и рейтинг в игре не показываются — игра работает полностью локально, как раньше.
 
+**Развёрнутый инстанс:** https://transport-manager-backend.nikamoniava166.workers.dev (аккаунт nikamoniava166@gmail.com, база D1 `transport-manager`, строгий режим оплат включён).
+
 ## Что делает воркер
 
 | Endpoint | Метод | Назначение |

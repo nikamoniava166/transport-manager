@@ -6,12 +6,12 @@ compatibility_date = "2026-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "transport-manager"
-database_id = "ВСТАВЬ_ID_БАЗЫ"
+database_id = "15dc6b20-72a7-45f9-87a8-43630bd4704b"
 
 # Секреты задаются командами — в файл не класть:
 #   wrangler secret put BOT_TOKEN
 #   wrangler secret put WEBHOOK_SECRET        # если включаешь вебхук подтверждения оплат
 #
-# Необязательные переменные (раскомментируй при необходимости):
-# [vars]
-# STRICT_PAYMENTS = "1"   # "1" — покупка активируется только после подтверждения вебхуком
+# Необязательные переменные:
+[vars]
+STRICT_PAYMENTS = "1"   # "1" — покупка активируется только после подтверждения вебхуком
