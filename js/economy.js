@@ -223,7 +223,10 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
   // ---------- деньги ----------
 
   E.orderPay = function(km, weight, mult, urgent){
-    return Math.round(km * (20 + 6 * weight) * mult * (urgent ? 1.5 : 1));
+    // затухание по дистанции: дальний рейс платит не линейно, иначе Газель на дальняке ловит 15–30 тыс.
+    var kmPart = Math.pow(Math.max(km, 10), 0.92) * 28;
+    var wPart = 0.75 + (weight || 0) * 0.14;
+    return Math.round((300 + kmPart) * wPart * (mult || 1) * (urgent ? 1.4 : 1));
   };
 
   E.fuelCost = function(km, cons){
@@ -233,7 +236,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
   // ---------- время рейса ----------
 
   E.tripMinutes = function(km, urgent, effSpeed, skill){
-    var m = km / 40;
+    var m = km / Game.data.kmPerMin;
     var mult = 1;
     mult -= Math.max(0, effSpeed - 85) / 500; // скорость машины
     mult -= skill * 0.008;                    // навык водителя
@@ -404,7 +407,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
   };
 
   E.xpGain = function(order){
-    return Math.round(order.km / 10 + order.weight * 5);
+    return Math.round(order.km / 20 + order.weight * 2);
   };
 
   E.addXp = function(xp){

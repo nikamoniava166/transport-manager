@@ -10,7 +10,8 @@ Game.data = {
   salaryShareDefault: 0.2,// доля водителя от оплаты заказа
   repairRate: 0.003,      // ремонт = цена машины × repairRate × износ(%)
   minTripMin: 2,          // минимальная длительность рейса, реальных минут
-  maxTripMin: 30,         // максимальная
+  maxTripMin: 25,         // максимальная
+  kmPerMin: 50,           // километров пути на реальную минуту (темп рейсов)
   roadK: 1.2,             // коэффициент извилистости дорог к прямой линии
 
   trucks: [
@@ -99,9 +100,9 @@ Game.dist = function(aId, bId){
   return Math.max(10, Math.round(km / 10) * 10);
 };
 
-// Уровень по суммарному опыту: пороги 100, 150, 225, 337…
+// Уровень по суммарному опыту: пороги 150, 248, 409, 675…
 Game.levelInfo = function(xp){
-  var lvl = 1, need = 100, rest = Math.max(0, Math.round(xp || 0));
-  while (rest >= need && lvl < 99) { rest -= need; lvl++; need = Math.round(need * 1.5); }
+  var lvl = 1, need = 150, rest = Math.max(0, Math.round(xp || 0));
+  while (rest >= need && lvl < 99) { rest -= need; lvl++; need = Math.round(need * 1.65); }
   return { level: lvl, cur: rest, need: need };
 };

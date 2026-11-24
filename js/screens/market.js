@@ -12,7 +12,7 @@ Game.screens.market = {
     function orderCard(o){
       var cargo = Game.data.cargo.find(function(c){ return c.id === o.cargoId; });
       var from = Game.city(o.from).name, to = Game.city(o.to).name;
-      var min = Math.round(Math.max(2, Math.min(30, o.km / 40)) * (o.urgent ? 0.75 : 1));
+      var min = Math.round(Math.max(Game.data.minTripMin, Math.min(Game.data.maxTripMin, o.km / Game.data.kmPerMin)) * (o.urgent ? 0.75 : 1));
       var flags = o.flags || [];
       var flagTags = flags.map(function(f){ return f === 'reefer' ? '<span class="tag accent">❄️ нужен реф-прицеп</span>' : '<span class="tag warn">☣️ нужна цистерна ADR</span>'; }).join('');
       function fits(tr){
