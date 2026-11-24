@@ -29,6 +29,14 @@ Game.esc = function(s){
   });
 };
 
+// Картинка машины: если у модели задан путь img (js/data.js) — тег <img>,
+// иначе заглушка-эмодзи. Используется в салоне б/у, пригодится и другим экранам.
+Game.truckImgHtml = function(T, cls){
+  cls = cls || 'truck-img';
+  if (T && T.img) return '<img class="' + cls + '" src="' + Game.esc(T.img) + '" alt="' + Game.esc(T.name) + '">';
+  return '<div class="' + cls + ' ph"><span>🚛</span></div>';
+};
+
 Game.toast = function(msg, type){
   var box = document.getElementById('toasts');
   if (!box) {

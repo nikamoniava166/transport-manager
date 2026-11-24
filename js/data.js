@@ -14,15 +14,32 @@ Game.data = {
   kmPerMin: 50,           // километров пути на реальную минуту (темп рейсов)
   roadK: 1.2,             // коэффициент извилистости дорог к прямой линии
 
+  // img — путь к картинке модели (например, 'img/trucks/kamaz.png'); показывается в салоне.
+  // Пока путь не задан — салон рисует заглушку 🚛. Картинки можно подключить позже без правок кода.
   trucks: [
-    { id:'gazelle', name:'Газель Next',  price:25000,   cap:1.5, speed:95,  cons:12, rel:70, lvl:1  },
-    { id:'bychok',  name:'«Бычок» ЗАО',  price:60000,   cap:3,   speed:90,  cons:14, rel:75, lvl:2  },
-    { id:'zil',     name:'ЗИЛ-130',      price:120000,  cap:5,   speed:85,  cons:18, rel:78, lvl:3  },
-    { id:'kamaz',   name:'КамАЗ-5320',   price:300000,  cap:10,  speed:90,  cons:25, rel:82, lvl:5  },
-    { id:'maz',     name:'МАЗ-6430',     price:600000,  cap:20,  speed:95,  cons:30, rel:85, lvl:8  },
-    { id:'volvo',   name:'Volvo FH16',   price:1200000, cap:25,  speed:105, cons:28, rel:92, lvl:12 },
-    { id:'scania',  name:'Scania R730',  price:2500000, cap:26,  speed:110, cons:26, rel:95, lvl:16 },
+    { id:'gazelle', name:'Газель Next',  price:25000,   cap:1.5, speed:95,  cons:12, rel:70, lvl:1,  img:'' },
+    { id:'bychok',  name:'«Бычок» ЗАО',  price:60000,   cap:3,   speed:90,  cons:14, rel:75, lvl:2,  img:'' },
+    { id:'zil',     name:'ЗИЛ-130',      price:120000,  cap:5,   speed:85,  cons:18, rel:78, lvl:3,  img:'' },
+    { id:'kamaz',   name:'КамАЗ-5320',   price:300000,  cap:10,  speed:90,  cons:25, rel:82, lvl:5,  img:'' },
+    { id:'maz',     name:'МАЗ-6430',     price:600000,  cap:20,  speed:95,  cons:30, rel:85, lvl:8,  img:'' },
+    { id:'volvo',   name:'Volvo FH16',   price:1200000, cap:25,  speed:105, cons:28, rel:92, lvl:12, img:'' },
+    { id:'scania',  name:'Scania R730',  price:2500000, cap:26,  speed:110, cons:26, rel:95, lvl:16, img:'' },
   ],
+
+  // Салон б/у грузовиков (вкладка «Салон»): завоз и ценообразование
+  salon: {
+    refreshMin: 15,           // минут между завозами
+    stockMin: 3, stockMax: 5, // машин за завоз
+    wearMin: 15, wearMax: 75, // износ предложений, %
+    priceBase: 0.65,          // доля цены нового при нулевом износе
+    wearK: 0.004,             // вычет доли за каждый 1 % износа
+    priceMin: 0.18,           // нижняя граница доли цены (совсем убитая всё равно что-то стоит)
+    upChance: 0.35,           // шанс, что апгрейд уже установлен на машине
+    upResidual: 0.35,         // остаточная стоимость установленных апгрейдов от цены их уровней
+    dealChance: 0.15,         // шанс «выгодной сделки»
+    dealDisc: 0.12,           // скидка «выгодной сделки»
+    kmPerWear: [700, 1600]    // км пробега на каждый 1 % износа
+  },
 
   cities: [
     { id:'msk',   name:'Москва',           lat:55.75, lon:37.62, lvl:1  },

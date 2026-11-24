@@ -220,6 +220,82 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return { ok: true, msg: '🔧 Прицеп отремонтирован · −' + Game.fmt.money(cost) };
   };
 
+  // ---------- салон б/у грузовиков ----------
+
+  // Цена б/у машины: доля от цены нового зависит от износа,
+  // уже установленные апгрейды добавляют остаточную стоимость
+  E.usedPrice = function(T, wear, up){
+    var D = Game.data.salon;
+    var share = Math.max(D.priceMin, D.priceBase - (wear || 0) * D.wearK);
+    var base = T.price * share;
+    var residual = 0;
+    Game.data.upgrades.forEach(function(U){
+      var lvl = (up && up[U.id]) || 0;
+      for (var i = 1; i <= lvl; i++) {
+        residual += Math.max(500, Math.round(T.price * U.step * i / 100) * 100);
+      }
+    });
+    return Math.max(1000, Math.round((base + residual * D.upResidual) / 100) * 100);
+  };
+
+  E.generateSalonOffer = function(){
+    var s = Game.state;
+    var D = Game.data.salon;
+    var lvl = Game.levelInfo(s.xp).level;
+    var pool = Game.data.trucks.filter(function(T){ return T.lvl <= lvl; });
+    if (!pool.length) return null;
+    var T = Game.pick(pool);
+    var wear = Math.round(Game.rnd(D.wearMin, D.wearMax));
+    var up = {};
+    Game.data.upgrades.forEach(function(U){
+      if (Math.random() < D.upChance) up[U.id] = Game.rndInt(1, U.levels);
+    });
+    var price = E.usedPrice(T, wear, up);
+    var deal = Math.random() < D.dealChance;
+    if (deal) price = Math.max(1000, Math.round(price * (1 - D.dealDisc) / 100) * 100);
+    var km = Math.round(wear * Game.rnd(D.kmPerWear[0], D.kmPerWear[1]) / 500) * 500;
+    return { uid: Game.uid(), tid: T.id, wear: wear, up: up, km: km, price: price, deal: deal };
+  };
+
+  // Завоз по таймеру (refreshAt — метка времени, офлайн тоже работает).
+  // Пустой сток до срока завоза не пополняется: «всё разобрали, ждите новый завоз».
+  E.refreshSalon = function(){
+    var s = Game.state;
+    var D = Game.data.salon;
+    var sl = s.salon;
+    var now = Date.now();
+    if (sl.refreshAt > now) return;
+    var list = [];
+    var count = Game.rndInt(D.stockMin, D.stockMax);
+    for (var i = 0; i < count; i++) {
+      var o = E.generateSalonOffer();
+      if (o) list.push(o);
+    }
+    sl.list = list;
+    sl.refreshAt = now + D.refreshMin * 60000;
+    Game.save();
+  };
+
+  E.salonBuy = function(offerUid){
+    var s = Game.state;
+    var offer = null;
+    (s.salon.list || []).forEach(function(o){ if (o.uid === offerUid) offer = o; });
+    if (!offer) return { ok: false, msg: 'Эту машину уже кто-то забрал' };
+    var T = Game.truck(offer.tid);
+    var lvl = Game.levelInfo(s.xp).level;
+    if (T.lvl > lvl) return { ok: false, msg: 'Нужен уровень ' + T.lvl };
+    if (s.trucks.length >= E.garageCap()) return { ok: false, msg: 'Гараж полон — нужно расширение' };
+    if (s.money < offer.price) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(offer.price) };
+    var up = {};
+    Game.data.upgrades.forEach(function(U){ up[U.id] = (offer.up && offer.up[U.id]) || 0; });
+    s.money -= offer.price; s.stats.spent += offer.price;
+    s.trucks.push({ uid: Game.uid(), tid: offer.tid, wear: offer.wear, up: up, km: offer.km });
+    s.salon.list = s.salon.list.filter(function(o){ return o.uid !== offerUid; });
+    E.logOp('out', offer.price, 'Покупка б/у: ' + T.name + ' (износ ' + offer.wear + '%, пробег ' + Game.fmt.km(offer.km) + ')');
+    Game.save();
+    return { ok: true, msg: '🎉 ' + T.name + ' с пробегом — ваш! Загляните в автопарк' };
+  };
+
   // ---------- деньги ----------
 
   E.orderPay = function(km, weight, mult, urgent){
@@ -446,6 +522,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var tr = null;
     s.trucks.forEach(function(x){ if (x.uid === t.truckUid) tr = x; });
     if (tr) {
+      tr.km = (tr.km || 0) + o.km; // одометр: пробег виден в салоне б/у и автопарке
       var dr = null;
       s.drivers.forEach(function(x){ if (x.uid === t.driverUid) dr = x; });
       var care = dr ? dr.skills.care : 0;
@@ -491,6 +568,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       });
     });
     E.refreshMarket();
+    E.refreshSalon();
     E.autoMaintain(now);
     // историю держим компактной — последние 20
     var done = s.trips.filter(function(t){ return t.status === 'done'; });

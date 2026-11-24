@@ -17,8 +17,8 @@ css/styles.css        — тема и компоненты
 js/data.js            — таблицы и константы
 js/state.js           — состояние, сейвы, миграции (localStorage + Telegram CloudStorage)
 js/ui.js              — формат, тосты, haptic, тема
-js/economy.js         — экономика: заказы, рейсы, события, персонал, улучшения
-js/screens/*.js       — экраны (home, market, trips, garage, office, more)
+js/economy.js         — экономика: заказы, рейсы, события, персонал, улучшения, салон б/у
+js/screens/*.js       — экраны (home, market, trips, garage, salon, office, more)
 js/app.js             — инициализация, роутер, история «назад»
 docs/game-design.md   — дизайн-документ
 ```

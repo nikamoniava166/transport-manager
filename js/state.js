@@ -27,6 +27,7 @@
       lastMaintAt: Date.now(),
       trips: [],
       market: { orders: [], refreshAt: 0 },
+      salon: { list: [], refreshAt: 0 },
       stats: { tripsDone: 0, earned: 0, spent: 0, km: 0, breakdowns: 0 },
       settings: { sound: true, haptic: true },
       created: Date.now(),
@@ -42,6 +43,8 @@
     out.settings      = Object.assign({}, d.settings,      (st && st.settings)      || {});
     out.market        = Object.assign({}, d.market,        (st && st.market)        || {});
     out.staffMarket   = Object.assign({}, d.staffMarket,   (st && st.staffMarket)   || {});
+    out.salon         = Object.assign({}, d.salon,         (st && st.salon)         || {});
+    out.salon.list    = Array.isArray(out.salon.list) ? out.salon.list : [];
     // старые сейвы: кандидаты-водители из driversMarket переезжают в общий staffMarket
     if (st && st.driversMarket && Array.isArray(st.driversMarket.list)) {
       var dm = st.driversMarket, sm = out.staffMarket;
@@ -57,6 +60,8 @@
     out.oplog     = Array.isArray(out.oplog)     ? out.oplog     : [];
     out.lastMaintAt = out.lastMaintAt || Date.now();
     out.trucks   = Array.isArray(out.trucks)   ? out.trucks   : d.trucks;
+    // пробег (появился вместе с салоном б/у) — у старых машин копится с нуля
+    out.trucks.forEach(function(t){ if (t.km == null) t.km = 0; });
     out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
     out.drivers  = Array.isArray(out.drivers)  ? out.drivers  : d.drivers;
     out.trips    = Array.isArray(out.trips)    ? out.trips    : [];
