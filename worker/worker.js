@@ -83,6 +83,27 @@ export default {
     if (url.pathname === '/tg-webhook') {
       const secret = request.headers.get('x-telegram-bot-api-secret-token');
       if (env.WEBHOOK_SECRET && secret !== env.WEBHOOK_SECRET) return json({ ok: false }, 401);
+
+      // Предоплата: Telegram до списания звёзд спрашивает у бота подтверждение заказа.
+      // Молчание дольше 10 секунд отменяет транзакцию — именно из-за этого «не проходит оплата».
+      const pcq = body && body.pre_checkout_query;
+      if (pcq) {
+        const m = String(pcq.invoice_payload || '').split(':'); // purchase:<invoiceId>:<userId>
+        let ready = false;
+        if (m[0] === 'purchase' && m[1] && m[2]) {
+          const inv = await env.DB.prepare(
+            "SELECT id FROM invoices WHERE id = ?1 AND user_id = ?2 AND status = 'new'"
+          ).bind(Number(m[1]), Number(m[2])).first();
+          ready = !!inv;
+        }
+        await botApi(env, 'answerPreCheckoutQuery', {
+          pre_checkout_query_id: pcq.id,
+          ok: ready,
+          error_message: ready ? undefined : 'Счёт не найден или уже оплачен'
+        });
+        return json({ ok: true });
+      }
+
       const pay = body && body.message && body.message.successful_payment;
       if (pay) {
         const m = String(pay.invoice_payload || '').split(':'); // purchase:<invoiceId>:<userId>
@@ -186,15 +207,31 @@ export default {
     // Активировать оплаченный счёт (один раз)
     if (url.pathname === '/purchase/claim') {
       const invoiceId = clampInt(body.invoiceId, 1, 1e9, 0);
-      const row = await db.prepare('SELECT * FROM invoices WHERE id = ?1 AND user_id = ?2').bind(invoiceId, user.id).first();
+      let row = await db.prepare('SELECT * FROM invoices WHERE id = ?1 AND user_id = ?2').bind(invoiceId, user.id).first();
       if (!row) return json({ ok: false, msg: 'Счёт не найден' }, 404);
       if (row.status === 'claimed') return json({ ok: false, msg: 'Уже активировано' });
-      if (env.STRICT_PAYMENTS === '1' && row.status !== 'paid') {
-        return json({ ok: false, msg: 'Оплата ещё не подтверждена' }, 409);
+      // строгий режим: подтверждение оплаты приходит вебхуком и может опоздать на секунду-другую — ждём его
+      if (env.STRICT_PAYMENTS === '1' && row.status === 'new') {
+        for (let i = 0; i < 5; i++) {
+          await new Promise(function(r){ setTimeout(r, 1300); });
+          row = await db.prepare('SELECT * FROM invoices WHERE id = ?1 AND user_id = ?2').bind(invoiceId, user.id).first();
+          if (!row || row.status !== 'new') break;
+        }
       }
-      await db.prepare("UPDATE invoices SET status = 'claimed', claimed_at = ?1 WHERE id = ?2 AND status != 'claimed'")
-        .bind(now, invoiceId).run();
+      if (!row || row.status !== 'paid') return json({ ok: false, msg: 'Оплата ещё не подтверждена', pending: true }, 409);
+      const upd = await db.prepare(
+        "UPDATE invoices SET status = 'claimed', claimed_at = ?1 WHERE id = ?2 AND status = 'paid'"
+      ).bind(now, invoiceId).run();
+      if (!upd || !upd.meta || upd.meta.changes < 1) return json({ ok: false, msg: 'Уже активировано' });
       return json({ ok: true, productId: row.product });
+    }
+
+    // Оплаченные, но не забранные покупки (приложение закрыли сразу после оплаты) — добираем на старте
+    if (url.pathname === '/purchase/pending') {
+      const rows = await db.prepare(
+        "SELECT id, product FROM invoices WHERE user_id = ?1 AND status = 'paid' ORDER BY id"
+      ).bind(user.id).all();
+      return json({ ok: true, invoices: rows.results || [] });
     }
 
     return json({ ok: false, msg: 'Не найдено' }, 404);

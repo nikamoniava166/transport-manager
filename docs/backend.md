@@ -25,7 +25,8 @@ wrangler d1 execute transport-manager --remote --command "INSERT INTO grants (us
 Выдача одноразовая: `/grant` помечает строку `claimed_at` в момент отдачи. Пока поддерживается `kind='money'`.
 | `/leaderboard` | POST | Топ-20 по капиталу + место игрока |
 | `/purchase` | POST | Создать счёт Telegram Stars (`createInvoiceLink`) |
-| `/purchase/claim` | POST | Активировать оплаченный счёт (один раз) |
+| `/purchase/claim` | POST | Активировать оплаченный счёт (один раз); в строгом режиме немного ждёт подтверждения вебхуком |
+| `/purchase/pending` | POST | Оплаченные, но не активированные счета — клиент добирает их при запуске |
 | `/tg-webhook` | POST | Вебхук бота: помечает счёт оплаченным |
 
 Авторизация клиентских запросов — по подписи `Telegram.WebApp.initData` (HMAC-SHA256 с токеном бота, подпись старше 24 часов отвергается). Имя в рейтинге берётся из Telegram-профиля.
@@ -66,9 +67,9 @@ wrangler d1 execute transport-manager --remote --command "INSERT INTO grants (us
 
 8. Проверка: открой `https://<адрес>/health` — должен ответить `{"ok":true}`.
 
-### Вебхук оплат (необязательно, но рекомендуется)
+### Вебхук оплат (обязателен для покупок)
 
-Ставит покупкам статус «paid» из обновлений бота и позволяет включить строгий режим:
+Без вебхука оплаты не проходят: при нажатии «Оплатить» Telegram присылает боту апдейт `pre_checkout_query`, и воркер должен за 10 секунд ответить `answerPreCheckoutQuery` — молчание отменяет транзакцию (у игрока выглядит как «оплата не прошла»). Статус «paid» воркер ставит из апдейта `message.successful_payment`; он же нужен строгому режиму `STRICT_PAYMENTS`:
 
 1. Придумай случайный `WEBHOOK_SECRET` (любая строка) и задай его:
    ```
@@ -78,6 +79,7 @@ wrangler d1 execute transport-manager --remote --command "INSERT INTO grants (us
    ```
    curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<адрес>/tg-webhook&secret_token=<WEBHOOK_SECRET>"
    ```
+   Параметр `allowed_updates` можно опустить — тогда доставляются все апдейты бота; воркер использует `message` и `pre_checkout_query`, остальное игнорирует.
 3. Для строгой проверки оплат раскомментируй в [worker/wrangler.toml](../worker/wrangler.toml):
    ```toml
    [vars]

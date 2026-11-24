@@ -102,6 +102,19 @@
   };
 
   // --- покупки за Stars: счёт у воркера → окно Telegram → активация ---
+
+  // Активация счёта с повторами: вебхук подтверждает оплату и может прийти чуть позже клиента
+  function claimInvoice(invoiceId, cb, attempt){
+    api('/purchase/claim', { invoiceId: invoiceId }, function(claim){
+      if (claim && claim.ok) { if (cb) cb(claim); return; }
+      if (claim && claim.pending && (attempt || 0) < 4) {
+        setTimeout(function(){ claimInvoice(invoiceId, cb, (attempt || 0) + 1); }, 3000);
+        return;
+      }
+      if (cb) cb(claim);
+    });
+  }
+
   N.buy = function(productId, cb){
     api('/purchase', { productId: productId }, function(res){
       if (!res.ok) { if (cb) cb(res); return; }
@@ -111,11 +124,26 @@
           if (cb) cb({ ok: false, msg: status === 'failed' ? 'Оплата не прошла' : 'Покупка отменена' });
           return;
         }
-        api('/purchase/claim', { invoiceId: res.invoiceId }, function(claim){
+        claimInvoice(res.invoiceId, function(claim){
           if (!claim.ok) { if (cb) cb(claim); return; }
           var granted = Game.economy.grantStarsProduct(claim.productId);
           if (granted.ok) N.syncSoon();
           if (cb) cb(granted);
+        });
+      });
+    });
+  };
+
+  // Добор оплаченных, но не активированных покупок (например, приложение закрыли сразу после оплаты)
+  N.claimPending = function(){
+    if (!N.enabled()) return;
+    api('/purchase/pending', {}, function(res){
+      if (!res || !res.ok || !Array.isArray(res.invoices)) return;
+      res.invoices.forEach(function(inv){
+        claimInvoice(inv.id, function(claim){
+          if (!claim || !claim.ok) return;
+          var granted = Game.economy.grantStarsProduct(claim.productId);
+          if (granted.ok) { Game.haptic('ok'); Game.toast(granted.msg, 'ok'); N.syncSoon(); }
         });
       });
     });

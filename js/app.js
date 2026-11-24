@@ -109,6 +109,9 @@ Game.init = function(){
   // бонусы от владельца игры (если выданы, пока игрок не заходил)
   if (Game.net && Game.net.enabled && Game.net.claimGrants) Game.net.claimGrants();
 
+  // добор оплаченных, но не активированных покупок (закрыли приложение сразу после оплаты)
+  if (Game.net && Game.net.enabled && Game.net.claimPending) Game.net.claimPending();
+
   var tabs = document.querySelectorAll('.tab');
   tabs.forEach(function(b){
     b.addEventListener('click', function(){
