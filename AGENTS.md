@@ -100,7 +100,7 @@ cover-640x360.png       — обложка мини-приложения
   - топливо: `км × расход/100 × 65 ₽ × (1 + надбавка прицепа)`
   - ремонт: `цена × 0.003 × износ%`
 - **Константы баланса** — в `js/data.js` (fuelPrice, kmPerMin, minTripMin, maxTripMin, repairRate) и в `js/economy.js` (orderPay, tripMinutes, xpGain). GDD (`docs/game-design.md`) должен соответствовать коду — правь оба.
-- **Тема:** только через CSS-переменные (`--bg`, `--panel`, `--accent`…). Не хардкодь цвета в стилях компонентов.
+- **Тема:** только через CSS-переменные (`--bg`, `--panel`, `--accent`…). Не хардкодь цвета в стилях компонентов. Производные фона/вкладок (`--bg2`, `--glow`, `--road`, `--glass`, `--tab-active`, `--tab-shadow`) считает `Game.applyTheme` в ui.js из фактических цветов темы Telegram — новые цветовые фичи тоже заводи через переменные.
 - **Звук:** только через `Game.sound.play(...)` / `Game.haptic(kind)` — он уважает настройки игрока.
 - **Навигация:** только `Game.navigate('id')`. Экраны — объекты `{ render, onTick?, moneySensitive? }` в `Game.screens`.
 - **Не используй** `alert`/`confirm` (в Telegram WebView ненадёжны) — двухшаговое подтверждение как у сброса прогресса.

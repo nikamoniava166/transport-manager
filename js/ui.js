@@ -75,6 +75,25 @@ Game.FALLBACK_THEMES = {
   light: { bg:'#eef2f6', panel:'#ffffff', panel2:'#e6ebf1', text:'#17212b', muted:'#7d8fa4', accent:'#3390ec', 'accent-text':'#ffffff', ok:'#31a24c', warn:'#e08600', danger:'#e03131' }
 };
 
+// hex → rgb / rgba / смешение — для производных цветов фона и вкладок
+function hexRgb(h){
+  h = String(h || '').replace('#', '');
+  if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+  var n = parseInt(h, 16);
+  return isNaN(n) ? null : [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function withAlpha(h, a){
+  var c = hexRgb(h);
+  return c ? 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')' : h;
+}
+function blendHex(h1, h2, t){
+  var a = hexRgb(h1), b = hexRgb(h2);
+  if (!a || !b) return h1;
+  return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' +
+         Math.round(a[1] + (b[1] - a[1]) * t) + ',' +
+         Math.round(a[2] + (b[2] - a[2]) * t) + ')';
+}
+
 Game.applyTheme = function(){
   var tg = window.Telegram && window.Telegram.WebApp;
   var p = (tg && tg.themeParams && tg.themeParams.bg_color) ? tg.themeParams : null;
@@ -110,6 +129,15 @@ Game.applyTheme = function(){
       };
     }
   }
+  // производные: градиент фона, разметка, «стекло» панелей — из фактических цветов темы
+  var deep = dark ? '#0c141c' : '#dbe2ea';
+  v['bg2'] = blendHex(v.bg, deep, dark ? 0.45 : 0.55);
+  v['glow'] = withAlpha(v.accent, dark ? 0.10 : 0.08);
+  v['road'] = withAlpha(v.text, dark ? 0.05 : 0.055);
+  v['glass'] = withAlpha(v.panel, dark ? 0.94 : 0.90);
+  v['tab-active'] = withAlpha(v.accent, dark ? 0.16 : 0.14);
+  v['tab-shadow'] = dark ? '0 14px 34px rgba(0,0,0,.5)' : '0 12px 28px rgba(23,33,43,.18)';
+
   var root = document.documentElement;
   Object.keys(v).forEach(function(k){ root.style.setProperty('--' + k, v[k]); });
   document.body.classList.toggle('is-light', !dark);
