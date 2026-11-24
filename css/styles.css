@@ -1,0 +1,159 @@
+:root{
+  --bg:#17212b; --panel:#232e3c; --panel2:#2c3a4d;
+  --text:#ffffff; --muted:#8fa3b8;
+  --accent:#54a9ff; --accent-text:#ffffff;
+  --ok:#4dd07a; --warn:#ffb84d; --danger:#ff6b6b;
+  --border:rgba(255,255,255,.08);
+  --radius:12px;
+  --tabbar-h:54px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Rubik',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  font-size:14px;line-height:1.4;
+  overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;
+}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+/* ---------- верхняя панель ---------- */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 14px;padding-top:calc(8px + env(safe-area-inset-top));
+  background:var(--bg);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:20;
+}
+.brand{font-weight:700;font-size:15px;letter-spacing:.2px;white-space:nowrap}
+.stats{display:flex;gap:6px;align-items:center}
+.pill{
+  background:var(--panel2);border-radius:99px;padding:3px 10px;
+  font-size:12px;font-weight:600;white-space:nowrap;
+}
+.pill.money{color:var(--ok)}
+
+/* ---------- область экрана ---------- */
+#screen{
+  flex:1;overflow-y:auto;padding:10px 10px calc(var(--tabbar-h) + 20px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling:touch;
+}
+
+/* ---------- таб-бар ---------- */
+#tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  display:flex;background:var(--panel);
+  padding-bottom:env(safe-area-inset-bottom);
+  border-top:1px solid var(--border);
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:none;border:none;color:var(--muted);
+  padding:6px 0 4px;font-size:9.5px;font-family:inherit;cursor:pointer;
+}
+.tab .ico{font-size:19px;line-height:1}
+.tab.active{color:var(--accent)}
+
+/* ---------- компоненты ---------- */
+.card{
+  background:var(--panel);border-radius:var(--radius);
+  padding:12px;margin-bottom:10px;border:1px solid var(--border);
+}
+.card .card-title{
+  font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;
+}
+.hero-title{font-size:17px;font-weight:800;margin-bottom:3px}
+.hero-sub{color:var(--muted);font-size:12.5px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.grid2 .card{margin-bottom:0}
+.stat-num{font-size:16px;font-weight:800}
+.stat-lbl{font-size:11px;color:var(--muted)}
+
+.progress{height:6px;border-radius:6px;background:var(--panel2);overflow:hidden}
+.progress i{display:block;height:100%;border-radius:6px;background:var(--accent);transition:width .4s}
+
+.btn{
+  display:block;width:100%;border:none;border-radius:11px;
+  padding:10px 14px;font-family:inherit;font-size:14px;font-weight:700;
+  background:var(--accent);color:var(--accent-text);cursor:pointer;
+}
+.btn:active{transform:scale(.97)}
+.btn.secondary{background:var(--panel2);color:var(--text)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn + .btn{margin-top:8px}
+.row{display:flex;gap:8px}
+.row .btn + .btn{margin-top:0}
+
+.tag{
+  display:inline-block;background:var(--panel2);color:var(--muted);
+  border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600;margin-right:6px;
+}
+.tag.ok{color:var(--ok)}
+.tag.warn{color:var(--warn)}
+.tag.danger{color:var(--danger)}
+.tag.accent{color:var(--accent)}
+
+.wear{display:flex;align-items:center;gap:8px;margin:6px 0}
+.wear .progress{flex:1}
+.wear .val{font-size:11px;color:var(--muted);min-width:64px;text-align:right}
+
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.center{text-align:center}
+.placeholder-card{border-style:dashed;opacity:.9}
+
+.list-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:none}
+.li-ico{font-size:22px}
+.li-main{flex:1;min-width:0}
+.li-title{font-weight:700;font-size:14px}
+.li-sub{font-size:12px;color:var(--muted)}
+
+.empty{padding:22px 12px;text-align:center;color:var(--muted)}
+.empty .big{font-size:30px;margin-bottom:6px}
+
+.divider{height:1px;background:var(--border);margin:8px 0}
+
+/* переключатель сегментов (бухгалтеры/механики) */
+.seg{display:flex;background:var(--panel2);border-radius:10px;padding:3px;margin-bottom:8px}
+.seg button{
+  flex:1;border:none;background:none;color:var(--muted);
+  font-family:inherit;font-size:12.5px;font-weight:600;
+  padding:7px 4px;border-radius:8px;cursor:pointer;
+}
+.seg button.sel{background:var(--accent);color:var(--accent-text)}
+
+/* ---------- тосты ---------- */
+.toasts{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom));
+  z-index:50;display:flex;flex-direction:column;gap:6px;align-items:center;
+  pointer-events:none;width:90%;max-width:360px;
+}
+.toast{
+  background:rgba(0,0,0,.78);color:#fff;border-radius:11px;
+  padding:9px 15px;font-size:13px;text-align:center;max-width:100%;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+  animation:toast-in .25s ease;
+}
+.toast.ok{background:rgba(29,141,77,.92)}
+.toast.err{background:rgba(196,49,75,.92)}
+.toast.hide{opacity:0;transition:opacity .3s}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- чипы выбора, панели, рейсы ---------- */
+.chip{
+  display:inline-block;background:var(--panel2);color:var(--text);border:none;
+  border-radius:99px;padding:6px 11px;font-size:11.5px;font-family:inherit;
+  font-weight:600;margin:0 6px 6px 0;cursor:pointer;
+}
+.chip.sel{background:var(--accent);color:var(--accent-text)}
+.chip[disabled]{opacity:.4}
+.chips{margin:2px 0}
+.panel{margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}
+.btn.small{width:auto;display:inline-block;padding:7px 12px;font-size:12.5px;white-space:nowrap}
+.trip{padding:10px 0;border-bottom:1px solid var(--border)}
+.trip:last-child{border-bottom:none}

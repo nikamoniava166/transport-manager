@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Менеджер перевозок</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚚</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">🚚 Менеджер перевозок</div>
+      <div class="stats">
+        <span id="hud-money" class="pill money">—</span>
+        <span id="hud-level" class="pill">Ур. 1</span>
+      </div>
+    </header>
+
+    <main id="screen" class="screen"></main>
+
+    <nav id="tabbar" class="tabbar">
+      <button class="tab" data-screen="home"><span class="ico">🏠</span><span>Главная</span></button>
+      <button class="tab" data-screen="market"><span class="ico">📦</span><span>Биржа</span></button>
+      <button class="tab" data-screen="trips"><span class="ico">🛣️</span><span>Рейсы</span></button>
+      <button class="tab" data-screen="garage"><span class="ico">🚛</span><span>Автопарк</span></button>
+      <button class="tab" data-screen="office"><span class="ico">🏢</span><span>Офис</span></button>
+      <button class="tab" data-screen="more"><span class="ico">⋯</span><span>Ещё</span></button>
+    </nav>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/economy.js"></script>
+  <script src="js/screens/home.js"></script>
+  <script src="js/screens/market.js"></script>
+  <script src="js/screens/trips.js"></script>
+  <script src="js/screens/garage.js"></script>
+  <script src="js/screens/office.js"></script>
+  <script src="js/screens/more.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
