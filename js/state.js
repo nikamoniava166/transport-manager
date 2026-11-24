@@ -78,6 +78,12 @@
     return Game.state.uidSeq;
   };
 
+  // Есть ли в сейве реальный прогресс — защита копий от затирания пустыми
+  Game.hasProgress = function(x){
+    return !!((x.stats && x.stats.tripsDone) || (x.xp > 0) ||
+              (x.trucks && x.trucks.length > 1) || (x.money || 0) > 50000);
+  };
+
   Game.load = function(){
     var st = null, hadLocal = false;
     try {
@@ -86,6 +92,29 @@
     } catch (e) {}
     Game.state = Game.migrate(st);
 
+    // Последний рубеж: серверная резервная копия (воркер, D1) — когда ни локального,
+    // ни облачного сейва с прогрессом не осталось (хранилище вычистили и т.п.)
+    var serverTried = false;
+    function tryServer(){
+      if (serverTried) return;
+      serverTried = true;
+      if (!Game.net || !Game.net.restore) return;
+      if (Game.hasProgress(Game.state)) return; // прогресс уже есть — копия не нужна
+      Game.net.restore(function(res){
+        if (!res || !res.ok || !res.state) return;
+        try {
+          var srv = Game.migrate(JSON.parse(res.state));
+          if (Game.hasProgress(srv)) {
+            Game.state = srv;
+            Game.updateHUD();
+            if (Game.currentScreen) Game.navigate(Game.currentScreen, true);
+            Game.toast('Прогресс восстановлен из резервной копии', 'ok');
+            Game.save(); // сразу сеем обратно в локаль и облако
+          }
+        } catch (e) {}
+      });
+    }
+
     // Telegram CloudStorage. Два случая:
     //  1) локального сейва нет (новое устройство, Telegram вычистил WebView-хранилище) —
     //     облако с прогрессом принимаем всегда: это единственная копия;
@@ -93,10 +122,6 @@
     //     и не затираем реальный локальный прогресс пустым облачным.
     // Пока проверка не завершилась, Game.save не пишет в облако (Game.cloudPending),
     // чтобы дефолтный state не перезаписал облачный сейв до его прочтения.
-    function hasProgress(x){
-      return !!((x.stats && x.stats.tripsDone) || (x.xp > 0) ||
-                (x.trucks && x.trucks.length > 1) || (x.money || 0) > 50000);
-    }
     try {
       var cs = tg && tg.CloudStorage;
       if (cs && cs.getItem) {
@@ -104,13 +129,13 @@
         setTimeout(function(){ Game.cloudPending = false; }, 5000);
         cs.getItem(Game.SAVE_KEY, function(err, value){
           Game.cloudPending = false;
-          if (err || !value) return;
           try {
+            if (err || !value) return;
             var cloud = Game.migrate(JSON.parse(value));
-            var cloudReal = hasProgress(cloud);
+            var cloudReal = Game.hasProgress(cloud);
             var take;
             if (!hadLocal) take = cloudReal;
-            else take = (cloud.lastSeen || 0) > (Game.state.lastSeen || 0) + 1000 && (cloudReal || !hasProgress(Game.state));
+            else take = (cloud.lastSeen || 0) > (Game.state.lastSeen || 0) + 1000 && (cloudReal || !Game.hasProgress(Game.state));
             if (take) {
               Game.state = cloud;
               Game.updateHUD();
@@ -118,9 +143,13 @@
               if (cloudReal) Game.toast('Прогресс подтянут из облака', 'ok');
             }
           } catch (e) {}
+          tryServer();
         });
+        setTimeout(tryServer, 6000); // колбэк мог не прийти — не откладываем серверную проверку навсегда
+      } else {
+        tryServer();
       }
-    } catch (e) {}
+    } catch (e) { tryServer(); }
   };
 
   Game.save = function(){

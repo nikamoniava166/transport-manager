@@ -22,3 +22,10 @@ CREATE TABLE IF NOT EXISTS invoices (
   claimed_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_invoices_user ON invoices (user_id);
+
+-- Резервные копии полных сейвов (для восстановления, если пропали localStorage и CloudStorage)
+CREATE TABLE IF NOT EXISTS saves (
+  user_id    INTEGER PRIMARY KEY,      -- Telegram user id
+  state      TEXT NOT NULL,            -- полный JSON сейва
+  updated_at INTEGER NOT NULL
+);

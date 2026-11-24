@@ -55,11 +55,15 @@
 
   function doSync(){
     lastSyncAt = Date.now();
-    api('/save', {
+    var body = {
       capital: N.capital(),
       level: Game.levelInfo(Game.state.xp).level,
       trips: Game.state.stats.tripsDone
-    }, null);
+    };
+    // полная резервная копия сейва на сервере — отправляем, только если есть прогресс,
+    // чтобы пустой дефолт не затирал копию
+    if (Game.hasProgress && Game.hasProgress(Game.state)) body.state = JSON.stringify(Game.state);
+    api('/save', body, null);
   }
 
   N.syncSoon = function(){
@@ -80,6 +84,9 @@
   };
 
   N.getLeaderboard = function(cb){ api('/leaderboard', {}, cb); };
+
+  // Резервная копия сейва на сервере: восстановление, когда локаль и облако пусты
+  N.restore = function(cb){ api('/restore', {}, cb); };
 
   // --- покупки за Stars: счёт у воркера → окно Telegram → активация ---
   N.buy = function(productId, cb){

@@ -102,7 +102,9 @@ export default {
     const now = Date.now();
     const db = env.DB;
 
-    // Прогресс игрока → таблица рейтинга (значения сообщает клиент, игра казуальная)
+    // Прогресс игрока → таблица рейтинга (значения сообщает клиент, игра казуальная);
+    // вместе с ним — полная резервная копия сейва (таблица saves) для восстановления,
+    // если пропали и localStorage, и CloudStorage
     if (url.pathname === '/save') {
       const capital = clampInt(body.capital, 0, 1e12, 0);
       const level = clampInt(body.level, 1, 99, 1);
@@ -113,7 +115,20 @@ export default {
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(id) DO UPDATE SET name = ?2, capital = ?3, level = ?4, trips = ?5, updated_at = ?6`
       ).bind(user.id, name, capital, level, trips, now).run();
+      const state = typeof body.state === 'string' ? body.state : '';
+      if (state.length > 2 && state.length < 200000) {
+        await db.prepare(
+          'INSERT INTO saves (user_id, state, updated_at) VALUES (?1, ?2, ?3) ' +
+          'ON CONFLICT(user_id) DO UPDATE SET state = ?2, updated_at = ?3'
+        ).bind(user.id, state, now).run();
+      }
       return json({ ok: true });
+    }
+
+    // Резервная копия сейва: последняя сохранённая версия (или null)
+    if (url.pathname === '/restore') {
+      const row = await db.prepare('SELECT state, updated_at FROM saves WHERE user_id = ?1').bind(user.id).first();
+      return json({ ok: true, state: row ? row.state : null, savedAt: row ? row.updated_at : 0 });
     }
 
     // Топ-20 по капиталу + место текущего игрока
