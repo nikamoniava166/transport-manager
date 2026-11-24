@@ -41,7 +41,7 @@ Game.screens.salon = {
           </div>
           <div class="salon-body">
             <div class="li-title">${T.name} <span class="tag">Т${tier}</span></div>
-            <div class="li-sub">${Game.fmt.ton(eff.cap)} груз · ${eff.speed} км/ч · ${eff.cons} л/100 км · надёжность ${eff.rel}%</div>
+            <div class="li-sub">${Game.fmt.ton(eff.cap)} груз · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ⚡' : 'л/100 км'} · надёжность ${eff.rel}%</div>
             <div class="li-sub">🛣️ пробег ${Game.fmt.km(o.km)}${ups.length ? ' · ⬆️ ' + ups.join(', ') : ''}</div>
             <div class="wear">
               <div class="progress"><i style="width:${Math.min(100, o.wear)}%;background:${wearColor(o.wear)}"></i></div>

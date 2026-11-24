@@ -32,7 +32,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       trailer: trailer,
       speed: T.speed + 5 * (up.engine || 0),
       cons: Math.round(Math.max(4, T.cons - 2 * (up.fuel || 0)) * (1 + (TT ? TT.consAdd : 0)) * 10) / 10,
-      rel: Math.min(99, T.rel + 5 * (up.service || 0))
+      rel: Math.min(99, T.rel + 5 * (up.service || 0)),
+      elec: !!T.elec
     };
   };
 
@@ -305,8 +306,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return Math.round((300 + kmPart) * wPart * (mult || 1) * (urgent ? 1.4 : 1));
   };
 
-  E.fuelCost = function(km, cons){
-    return Math.round(km * cons / 100 * Game.data.fuelPrice);
+  E.fuelCost = function(km, cons, elec){
+    // электрогрузовики заправляются электричеством — оно сильно дешевле солярки
+    return Math.round(km * cons / 100 * (elec ? Game.data.fuelPriceElec : Game.data.fuelPrice));
   };
 
   // ---------- время рейса ----------
@@ -439,7 +441,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (eff.cap < order.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (order.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
     if (missing.length) return { ok: false, msg: missing[0] === 'reefer' ? 'Нужен рефрижераторный прицеп' : 'Нужна цистерна (ADR)' };
-    var fuel = E.fuelCost(order.km, eff.cons);
+    var fuel = E.fuelCost(order.km, eff.cons, eff.elec);
     var advance = Math.round(order.pay * dr.share / 100);
     if (s.money < fuel + advance) return { ok: false, msg: 'Не хватает на топливо и аванс: ' + Game.fmt.money(fuel + advance) };
     s.money -= fuel + advance;

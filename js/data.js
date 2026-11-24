@@ -7,6 +7,7 @@ Game.data = {
 
   // Экономика
   fuelPrice: 65,          // ₽ за литр
+  fuelPriceElec: 15,      // ₽ за кВт·ч для электрогрузовиков (дешёвая «заправка»)
   salaryShareDefault: 0.2,// доля водителя от оплаты заказа
   repairRate: 0.003,      // ремонт = цена машины × repairRate × износ(%)
   minTripMin: 2,          // минимальная длительность рейса, реальных минут
@@ -22,8 +23,12 @@ Game.data = {
     { id:'zil',     name:'ЗИЛ-130',      price:120000,  cap:5,   speed:85,  cons:18, rel:78, lvl:3,  img:'' },
     { id:'kamaz',   name:'КамАЗ-5320',   price:300000,  cap:10,  speed:90,  cons:25, rel:82, lvl:5,  img:'' },
     { id:'maz',     name:'МАЗ-6430',     price:600000,  cap:20,  speed:95,  cons:30, rel:85, lvl:8,  img:'' },
+    { id:'egaz',    name:'ГАЗель Электро',       price:300000,  cap:2,  speed:92,  cons:14, rel:74, lvl:10, img:'', elec:true },
     { id:'volvo',   name:'Volvo FH16',   price:1200000, cap:25,  speed:105, cons:28, rel:92, lvl:12, img:'' },
+    { id:'ekam',    name:'КамАЗ «Электро»',      price:1300000, cap:12, speed:100, cons:22, rel:82, lvl:13, img:'', elec:true },
+    { id:'apkam',   name:'КамАЗ-6490 Автопоезд', price:3200000, cap:33, speed:95,  cons:34, rel:86, lvl:15, img:'' },
     { id:'scania',  name:'Scania R730',  price:2500000, cap:26,  speed:110, cons:26, rel:95, lvl:16, img:'' },
+    { id:'apscan',  name:'Scania S770 Автопоезд', price:7000000, cap:40, speed:105, cons:31, rel:96, lvl:18, img:'' },
   ],
 
   // Салон б/у грузовиков (вкладка «Салон»): завоз и ценообразование

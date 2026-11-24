@@ -85,7 +85,7 @@ Game.screens.garage = {
             <div class="li-title">🚚 ${T.name}${busy ? ' <span class="tag accent">🛣️ в рейсе</span>' : ''}</div>
             <span class="tag">Т${tier} · №${tr.uid}</span>
           </div>
-          <div class="li-sub" style="margin-top:4px">${Game.fmt.ton(eff.cap)} груз${eff.trailer ? ' (с прицепом)' : ''} · ${eff.speed} км/ч · ${eff.cons} л/100 км · надёжность ${eff.rel}%${tr.km > 0 ? ' · пробег ' + Game.fmt.km(tr.km) : ''}</div>
+          <div class="li-sub" style="margin-top:4px">${Game.fmt.ton(eff.cap)} груз${eff.trailer ? ' (с прицепом)' : ''} · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ⚡' : 'л/100 км'} · надёжность ${eff.rel}%${tr.km > 0 ? ' · пробег ' + Game.fmt.km(tr.km) : ''}</div>
           <div class="wear">
             <div class="progress"><i style="width:${Math.min(100, tr.wear)}%;background:${wearColor(tr.wear)}"></i></div>
             <div class="val">износ ${Math.round(tr.wear)}%</div>
@@ -145,10 +145,10 @@ Game.screens.garage = {
           var fullGarage = s.trucks.length >= cap;
           return `
             <div class="list-item">
-              <div class="li-ico">🚛</div>
+              <div class="li-ico">${T.elec ? '⚡' : '🚛'}</div>
               <div class="li-main">
                 <div class="li-title">${T.name}${locked ? ' 🔒' : ''}</div>
-                <div class="li-sub">${Game.fmt.ton(T.cap)} · ${T.speed} км/ч · ${T.cons} л/100 км${locked ? ' · нужен ур. ' + T.lvl : ''}</div>
+                <div class="li-sub">${Game.fmt.ton(T.cap)} · ${T.speed} км/ч · ${T.cons} ${T.elec ? 'кВт·ч/100 км · заправка дешевле' : 'л/100 км'}${locked ? ' · нужен ур. ' + T.lvl : ''}</div>
               </div>
               <button class="btn small" data-buy="${T.id}" ${(!locked && afford && !fullGarage) ? '' : 'disabled'}>${fullGarage && !locked ? 'Гараж полон' : locked ? '🔒 ур. ' + T.lvl : Game.fmt.money(T.price)}</button>
             </div>`;
