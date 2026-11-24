@@ -79,26 +79,43 @@
   };
 
   Game.load = function(){
-    var st = null;
+    var st = null, hadLocal = false;
     try {
       var raw = localStorage.getItem(Game.SAVE_KEY);
-      if (raw) st = JSON.parse(raw);
+      if (raw) { st = JSON.parse(raw); hadLocal = true; }
     } catch (e) {}
     Game.state = Game.migrate(st);
 
-    // Telegram CloudStorage: если облако свежее локального — берём облако
+    // Telegram CloudStorage. Два случая:
+    //  1) локального сейва нет (новое устройство, Telegram вычистил WebView-хранилище) —
+    //     облако с прогрессом принимаем всегда: это единственная копия;
+    //  2) локальный есть — берём облако, только если оно свежее,
+    //     и не затираем реальный локальный прогресс пустым облачным.
+    // Пока проверка не завершилась, Game.save не пишет в облако (Game.cloudPending),
+    // чтобы дефолтный state не перезаписал облачный сейв до его прочтения.
+    function hasProgress(x){
+      return !!((x.stats && x.stats.tripsDone) || (x.xp > 0) ||
+                (x.trucks && x.trucks.length > 1) || (x.money || 0) > 50000);
+    }
     try {
       var cs = tg && tg.CloudStorage;
       if (cs && cs.getItem) {
+        Game.cloudPending = true;
+        setTimeout(function(){ Game.cloudPending = false; }, 5000);
         cs.getItem(Game.SAVE_KEY, function(err, value){
+          Game.cloudPending = false;
           if (err || !value) return;
           try {
             var cloud = Game.migrate(JSON.parse(value));
-            if ((cloud.lastSeen || 0) > (Game.state.lastSeen || 0) + 1000) {
+            var cloudReal = hasProgress(cloud);
+            var take;
+            if (!hadLocal) take = cloudReal;
+            else take = (cloud.lastSeen || 0) > (Game.state.lastSeen || 0) + 1000 && (cloudReal || !hasProgress(Game.state));
+            if (take) {
               Game.state = cloud;
               Game.updateHUD();
               if (Game.currentScreen) Game.navigate(Game.currentScreen, true);
-              Game.toast('Прогресс подтянут из облака', 'ok');
+              if (cloudReal) Game.toast('Прогресс подтянут из облака', 'ok');
             }
           } catch (e) {}
         });
@@ -110,6 +127,8 @@
     if (!Game.state) return;
     Game.state.lastSeen = Date.now();
     try { localStorage.setItem(Game.SAVE_KEY, JSON.stringify(Game.state)); } catch (e) {}
+    // пока идёт первичная проверка облака — не затираем его текущим state
+    if (Game.cloudPending) return;
     try {
       var cs = tg && tg.CloudStorage;
       if (cs && cs.setItem) cs.setItem(Game.SAVE_KEY, JSON.stringify(Game.state), function(){});
