@@ -169,7 +169,7 @@ Game.screens.market = {
           Game.haptic('err');
           Game.toast(r.msg, 'err');
         }
-        Game.navigate('market', true);
+        Game.navigate('trips', true); // отправили — показываем рейс (под-вкладка «Рейсы»)
       };
     });
   },

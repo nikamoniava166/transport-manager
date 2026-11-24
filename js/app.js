@@ -3,6 +3,10 @@
 Game.currentScreen = null;
 
 Game.navigate = function(id, keepScroll){
+  // «Рейсы» — под-вкладка общей вкладки «Биржа» (js/screens/orders.js):
+  // прямой заход на «Биржу» открывает заказы, перерисовки под-вкладку не сбрасывают
+  if (id === 'trips') { Game.ui.ordersTab = 'trips'; id = 'market'; }
+  else if (id === 'market' && !keepScroll) { Game.ui.ordersTab = 'market'; }
   var scr = Game.screens[id];
   if (!scr) return;
   Game.currentScreen = id;
