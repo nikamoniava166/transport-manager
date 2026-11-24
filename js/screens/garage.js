@@ -78,6 +78,8 @@ Game.screens.garage = {
       var busy = E.isBusy(tr.uid);
       var repairCost = E.repairCost(tr);
       var needRepair = tr.wear > 0 && !busy && s.money >= repairCost;
+      var sellPrice = E.sellPrice(T.price, tr.wear);
+      var canSell = !busy && s.trucks.length > 1;
       var panel = Game.ui.garageUpUid === tr.uid ? upPanel(tr) : '';
       return `
         <div class="card">
@@ -96,6 +98,9 @@ Game.screens.garage = {
             <button class="btn secondary" data-repair="${tr.uid}" ${needRepair ? '' : 'disabled'}>🔧 Ремонт${tr.wear > 0 && !busy ? ' · ' + Game.fmt.money(repairCost) : ''}</button>
             <button class="btn secondary" data-upg="${tr.uid}">⬆️ Апгрейды</button>
           </div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? '🏷 Продать · ' + Game.fmt.money(sellPrice) : '🏷 Продать (последняя)'}</button>
+          </div>
         </div>`;
     }
 
@@ -113,6 +118,25 @@ Game.screens.garage = {
         </div>`;
     }
 
+    // свои прицепы: где стоит, износ и цена скупщика
+    function ownTrailerRow(t){
+      var TT = Game.trailerType(t.tid);
+      var host = null;
+      if (t.attachedTo) s.trucks.forEach(function(x){ if (x.uid === t.attachedTo) host = x; });
+      var place = host ? 'прицеплен: ' + Game.truck(host.tid).name + ' №' + host.uid : 'на складе';
+      var onTrip = host ? E.isBusy(host.uid) : false;
+      var price = E.sellPrice(TT.price, t.wear);
+      return `
+        <div class="list-item">
+          <div class="li-ico">🛻</div>
+          <div class="li-main">
+            <div class="li-title">${TT.name}${TT.flags.length ? ' ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
+            <div class="li-sub">${place} · износ ${Math.round(t.wear)}%${onTrip ? ' · 🛣️ в рейсе' : ''}</div>
+          </div>
+          <button class="btn secondary small" data-tsell="${t.uid}|${price}" ${onTrip ? 'disabled' : ''}>🏷 ${Game.fmt.money(price)}</button>
+        </div>`;
+    }
+
     var cap = E.garageCap();
     var gLvl = s.garageLvl || 0;
     var gCost = E.garageUpCost();
@@ -120,7 +144,6 @@ Game.screens.garage = {
     var places = '';
     for (var gi = 0; gi < s.trucks.length; gi++) places += '🚛';
     for (var gj = 0; gj < freePlaces; gj++) places += '⬜';
-    var yardCount = s.trailers.filter(function(t){ return !t.attachedTo; }).length;
 
     root.innerHTML = `
       <div class="card">
@@ -133,8 +156,11 @@ Game.screens.garage = {
       </div>
       ${s.trucks.map(truckCard).join('')}
       <div class="card">
-        <div class="card-title">Прицепы${yardCount ? ' · на складе ' + yardCount : ''}</div>
-        <div class="small muted" style="margin-bottom:4px">Один прицеп на грузовик · не занимают места в гараже · прикрепляются из карточки машины</div>
+        <div class="card-title">Прицепы${s.trailers.length ? ' · ваши ' + s.trailers.length : ''}</div>
+        <div class="small muted" style="margin-bottom:4px">Один прицеп на грузовик · не занимают места в гараже · прикрепляются из карточки машины, продаются здесь</div>
+        ${s.trailers.length
+          ? s.trailers.map(ownTrailerRow).join('') + '<div class="divider"></div><div class="small muted" style="margin:2px 0 6px">Новые у дилера:</div>'
+          : ''}
         ${D.trailers.map(dealerTrailerRow).join('')}
       </div>
       <div class="card">
@@ -243,6 +269,58 @@ Game.screens.garage = {
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);
+      };
+    });
+
+    // продажа машины: двухшаговое подтверждение (как у сброса прогресса), откат через 4 с
+    root.querySelectorAll('[data-sell]').forEach(function(b){
+      var parts = b.getAttribute('data-sell').split('|');
+      var uid = +parts[0], price = +parts[1];
+      var armed = false, timer = null;
+      b.onclick = function(){
+        if (!armed) {
+          armed = true;
+          b.className = 'btn small';
+          b.textContent = 'Точно продать за ' + Game.fmt.money(price) + '?';
+          Game.haptic('tap');
+          timer = setTimeout(function(){
+            armed = false;
+            b.className = 'btn secondary small';
+            b.textContent = '🏷 Продать · ' + Game.fmt.money(price);
+          }, 4000);
+        } else {
+          clearTimeout(timer);
+          var r = E.sellTruck(uid);
+          if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); Game.updateHUD(); }
+          else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+          Game.navigate('garage', true);
+        }
+      };
+    });
+
+    // продажа прицепа — тот же двухшаговый паттерн
+    root.querySelectorAll('[data-tsell]').forEach(function(b){
+      var parts = b.getAttribute('data-tsell').split('|');
+      var uid = +parts[0], price = +parts[1];
+      var armed = false, timer = null;
+      b.onclick = function(){
+        if (!armed) {
+          armed = true;
+          b.className = 'btn small';
+          b.textContent = 'Точно за ' + Game.fmt.money(price) + '?';
+          Game.haptic('tap');
+          timer = setTimeout(function(){
+            armed = false;
+            b.className = 'btn secondary small';
+            b.textContent = '🏷 ' + Game.fmt.money(price);
+          }, 4000);
+        } else {
+          clearTimeout(timer);
+          var r = E.sellTrailer(uid);
+          if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); Game.updateHUD(); }
+          else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+          Game.navigate('garage', true);
+        }
       };
     });
   }

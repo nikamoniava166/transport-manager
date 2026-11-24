@@ -221,6 +221,48 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return { ok: true, msg: '🔧 Прицеп отремонтирован · −' + Game.fmt.money(cost) };
   };
 
+  // ---------- продажа с рук (машины и прицепы) ----------
+
+  // Цена скупщика: цена нового × (0,5 − износ × 0,003), но не ниже 10 %; округление до сотен
+  E.sellPrice = function(basePrice, wear){
+    var k = 0.5 - (wear || 0) * 0.003;
+    if (k < 0.1) k = 0.1;
+    return Math.max(100, Math.round(basePrice * k / 100) * 100);
+  };
+
+  E.sellTruck = function(truckUid){
+    var s = Game.state;
+    var tr = null;
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!tr) return { ok: false, msg: 'Машина не найдена' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    if (s.trucks.length <= 1) return { ok: false, msg: 'Нельзя продать последнюю машину' };
+    var T = Game.truck(tr.tid);
+    var price = E.sellPrice(T.price, tr.wear);
+    var trailer = E.trailerOf(truckUid);
+    if (trailer) trailer.attachedTo = null; // прицеп не продаётся вместе с машиной — остаётся на складе
+    s.trucks = s.trucks.filter(function(x){ return x.uid !== truckUid; });
+    s.money += price;
+    E.logOp('in', price, 'Продажа: ' + T.name);
+    Game.save();
+    return { ok: true, msg: '💰 ' + T.name + ' продана за ' + Game.fmt.money(price) + (trailer ? ' — прицеп остался на складе' : '') };
+  };
+
+  E.sellTrailer = function(trailerUid){
+    var s = Game.state;
+    var t = null;
+    s.trailers.forEach(function(x){ if (x.uid === trailerUid) t = x; });
+    if (!t) return { ok: false, msg: 'Прицеп не найден' };
+    if (t.attachedTo && E.isBusy(t.attachedTo)) return { ok: false, msg: 'Прицеп в рейсе — дождитесь возвращения' };
+    var TT = Game.trailerType(t.tid);
+    var price = E.sellPrice(TT.price, t.wear);
+    s.trailers = s.trailers.filter(function(x){ return x.uid !== trailerUid; });
+    s.money += price;
+    E.logOp('in', price, 'Продажа: ' + TT.name);
+    Game.save();
+    return { ok: true, msg: '💰 ' + TT.name + ' продан за ' + Game.fmt.money(price) };
+  };
+
   // ---------- салон б/у грузовиков ----------
 
   // Цена б/у машины: доля от цены нового зависит от износа,
