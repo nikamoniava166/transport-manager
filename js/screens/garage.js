@@ -6,7 +6,6 @@ Game.screens.garage = {
     var s = Game.state;
     var E = Game.economy;
     var D = Game.data;
-    var lvl = Game.levelInfo(s.xp).level;
     var pickFor = Game.ui.garageTrailerFor || null;
 
     function wearColor(w){ return w < 40 ? 'var(--ok)' : w < 70 ? 'var(--warn)' : 'var(--danger)'; }
@@ -104,20 +103,6 @@ Game.screens.garage = {
         </div>`;
     }
 
-    function dealerTrailerRow(TT){
-      var afford = s.money >= TT.price;
-      var compatible = s.trucks.some(function(tr){ return Game.truck(tr.tid).cap >= TT.minCap; });
-      return `
-        <div class="list-item">
-          <div class="li-ico">🛻</div>
-          <div class="li-main">
-            <div class="li-title">${TT.name}${TT.flags.length ? ' ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
-            <div class="li-sub">+${Game.fmt.ton(TT.capAdd)} к грузоподъёмности · расход +${Math.round(TT.consAdd * 100)}% · тягач от ${Game.fmt.ton(TT.minCap)}${compatible ? '' : ' · 🔒 нет подходящего грузовика'}</div>
-          </div>
-          <button class="btn small" data-buytrailer="${TT.id}" ${afford ? '' : 'disabled'}>${Game.fmt.money(TT.price)}</button>
-        </div>`;
-    }
-
     // свои прицепы: где стоит, износ и цена скупщика
     function ownTrailerRow(t){
       var TT = Game.trailerType(t.tid);
@@ -159,26 +144,8 @@ Game.screens.garage = {
         <div class="card-title">Прицепы${s.trailers.length ? ' · ваши ' + s.trailers.length : ''}</div>
         <div class="small muted" style="margin-bottom:4px">Один прицеп на грузовик · не занимают места в гараже · прикрепляются из карточки машины, продаются здесь</div>
         ${s.trailers.length
-          ? s.trailers.map(ownTrailerRow).join('') + '<div class="divider"></div><div class="small muted" style="margin:2px 0 6px">Новые у дилера:</div>'
-          : ''}
-        ${D.trailers.map(dealerTrailerRow).join('')}
-      </div>
-      <div class="card">
-        <div class="card-title">У дилера — грузовики</div>
-        ${D.trucks.map(function(T){
-          var locked = T.lvl > lvl;
-          var afford = s.money >= T.price;
-          var fullGarage = s.trucks.length >= cap;
-          return `
-            <div class="list-item">
-              <div class="li-ico">${T.elec ? '⚡' : '🚛'}</div>
-              <div class="li-main">
-                <div class="li-title">${T.name}${locked ? ' 🔒' : ''}</div>
-                <div class="li-sub">${Game.fmt.ton(T.cap)} · ${T.speed} км/ч · ${T.cons} ${T.elec ? 'кВт·ч/100 км · заправка дешевле' : 'л/100 км'}${locked ? ' · нужен ур. ' + T.lvl : ''}</div>
-              </div>
-              <button class="btn small" data-buy="${T.id}" ${(!locked && afford && !fullGarage) ? '' : 'disabled'}>${fullGarage && !locked ? 'Гараж полон' : locked ? '🔒 ур. ' + T.lvl : Game.fmt.money(T.price)}</button>
-            </div>`;
-        }).join('')}
+          ? s.trailers.map(ownTrailerRow).join('')
+          : '<div class="small muted" style="margin-top:4px">Своих прицепов пока нет — покупка на вкладке «Салон»</div>'}
       </div>
     `;
 
@@ -210,22 +177,6 @@ Game.screens.garage = {
     root.querySelectorAll('[data-upggarage]').forEach(function(b){
       b.onclick = function(){
         var r = E.upgradeGarage();
-        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
-        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
-        Game.navigate('garage', true);
-      };
-    });
-    root.querySelectorAll('[data-buy]').forEach(function(b){
-      b.onclick = function(){
-        var r = E.buyTruck(b.getAttribute('data-buy'));
-        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
-        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
-        Game.navigate('garage', true);
-      };
-    });
-    root.querySelectorAll('[data-buytrailer]').forEach(function(b){
-      b.onclick = function(){
-        var r = E.buyTrailer(b.getAttribute('data-buytrailer'));
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);

@@ -7,6 +7,8 @@ Game.navigate = function(id, keepScroll){
   // прямой заход на «Биржу» открывает заказы, перерисовки под-вкладку не сбрасывают
   if (id === 'trips') { Game.ui.ordersTab = 'trips'; id = 'market'; }
   else if (id === 'market' && !keepScroll) { Game.ui.ordersTab = 'market'; }
+  // «Салон» — магазин (б/у / новые / прицепы): свежий заход открывает «Б/у»
+  else if (id === 'salon' && !keepScroll) { Game.ui.salonTab = 'used'; }
   var scr = Game.screens[id];
   if (!scr) return;
   Game.currentScreen = id;
