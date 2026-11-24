@@ -65,7 +65,7 @@ Game.screens.home = {
       <div class="card">
         <div class="card-title">Сейчас в пути — ${active.length}</div>
         ${tripsHtml}
-        ${active.length ? '' : '<button class="btn" id="go-market">📦 Открыть биржу</button>'}
+        ${active.length ? '' : '<button class="btn" id="go-market">🧭 Диспетчер</button>'}
       </div>
 
       <div class="row">
