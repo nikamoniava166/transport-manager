@@ -9,6 +9,10 @@ Game.screens.home = {
     var active = s.trips.filter(function(t){ return t.status === 'active'; });
     var rested = s.drivers.filter(function(d){ return d.restUntil <= Date.now() && !Game.economy.driverBusy(d.uid); }).length;
     var boostLeft = (s.stars && s.stars.boostUntil > Date.now()) ? s.stars.boostUntil - Date.now() : 0;
+    var di = Game.economy.dailyInfo ? Game.economy.dailyInfo() : { claimed: true, streak: 0, nextStreak: 1, reward: 0 };
+    var diHtml = di.claimed
+      ? '<div class="small muted">Бонус забран · приходите завтра. Серия: ' + di.streak + ' ' + Game.plural(di.streak, 'день', 'дня', 'дней') + '.</div>'
+      : '<div class="li-sub">Серия: ' + di.nextStreak + ' ' + Game.plural(di.nextStreak, 'день', 'дня', 'дней') + ' · награда: <b style="color:var(--ok)">' + Game.fmt.money(di.reward) + '</b></div><button class="btn" id="claim-daily" style="margin-top:8px">🎁 Забрать бонус</button>';
     Game.ui.homeSig = active.map(function(t){ return t.uid; }).join(',');
 
     var tripsHtml;
@@ -68,6 +72,11 @@ Game.screens.home = {
         ${active.length ? '' : '<button class="btn" id="go-market">🧭 Диспетчер</button>'}
       </div>
 
+      <div class="card">
+        <div class="card-title">Ежедневный бонус</div>
+        ${diHtml}
+      </div>
+
       <div class="row">
         <button class="btn secondary" id="go-garage">🚛 Автопарк</button>
         <button class="btn secondary" id="go-acc">🏢 Офис</button>
@@ -79,6 +88,14 @@ Game.screens.home = {
     if (gm) gm.onclick = function(){ Game.haptic('tap'); Game.navigate('market'); };
     if (gg) gg.onclick = function(){ Game.haptic('tap'); Game.navigate('garage'); };
     if (ga) ga.onclick = function(){ Game.haptic('tap'); Game.navigate('office'); };
+    var cd = document.getElementById('claim-daily');
+    if (cd) cd.onclick = function(){
+      var r = Game.economy.claimDaily();
+      if (r.ok) { Game.haptic('ok'); if (Game.confetti) Game.confetti(); Game.toast(r.msg, 'ok'); }
+      else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+      Game.navigate('home', true);
+      Game.updateHUD();
+    };
   },
 
   onTick: function(){

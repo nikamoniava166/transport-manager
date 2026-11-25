@@ -102,6 +102,22 @@ Game.data = {
   driverLast:  ['Петров','Смирнов','Кузнецов','Соколов','Попов','Волков','Алексеев','Лебедев','Семёнов','Егоров','Павлов','Козлов','Николаев','Морозов','Зайцев','Орлов'],
   staffFirstF: ['Анна','Ольга','Мария','Екатерина','Татьяна','Ирина','Светлана','Наталья','Елена','Юлия','Вера','Галина'],
   staffLastF:  ['Иванова','Петрова','Смирнова','Кузнецова','Попова','Волкова','Соколова','Лебедева','Козлова','Морозова','Егорова','Орлова'],
+
+  // Достижения: check(state) — условие получения, вызывается каждый тик
+  achievements: [
+    { id:'trip1',   icon:'🛣️', name:'Первый рейс',      desc:'Доставить первый груз',        check: function(s){ return s.stats.tripsDone >= 1; } },
+    { id:'trip10',  icon:'📦', name:'Десятый рейс',     desc:'10 доставленных рейсов',       check: function(s){ return s.stats.tripsDone >= 10; } },
+    { id:'trip50',  icon:'🚚', name:'Полсотни рейсов',  desc:'50 доставленных рейсов',       check: function(s){ return s.stats.tripsDone >= 50; } },
+    { id:'trip100', icon:'🏆', name:'Сотня рейсов',     desc:'100 доставленных рейсов',      check: function(s){ return s.stats.tripsDone >= 100; } },
+    { id:'fleet2',  icon:'🚛', name:'Не одной машиной', desc:'Второй грузовик в автопарке',  check: function(s){ return s.trucks.length >= 2; } },
+    { id:'fleet5',  icon:'🏭', name:'Большой автопарк', desc:'5 грузовиков в автопарке',     check: function(s){ return s.trucks.length >= 5; } },
+    { id:'lvl5',    icon:'⭐', name:'Пятый уровень',    desc:'Достичь 5 уровня',             check: function(s){ return Game.levelInfo(s.xp).level >= 5; } },
+    { id:'lvl10',   icon:'🌟', name:'Десятый уровень',  desc:'Достичь 10 уровня',            check: function(s){ return Game.levelInfo(s.xp).level >= 10; } },
+    { id:'acc1',    icon:'🧾', name:'Первый бухгалтер', desc:'Нанять бухгалтера',            check: function(s){ return (s.staff || []).some(function(p){ return p.role === 'accountant'; }); } },
+    { id:'mech1',   icon:'🔧', name:'Первый механик',   desc:'Нанять механика',              check: function(s){ return (s.staff || []).some(function(p){ return p.role === 'mechanic'; }); } },
+    { id:'million', icon:'💎', name:'Миллионер',        desc:'Накопить 1 000 000 ₽',         check: function(s){ return s.money >= 1000000; } },
+    { id:'km100k',  icon:'🌍', name:'100 000 км',       desc:'Пройти 100 000 км по дорогам', check: function(s){ return s.stats.km >= 100000; } },
+  ],
 };
 
 Game.truck = function(id){ return Game.data.trucks.find(function(t){ return t.id === id; }); };
@@ -127,4 +143,10 @@ Game.levelInfo = function(xp){
   var lvl = 1, need = 150, rest = Math.max(0, Math.round(xp || 0));
   while (rest >= need && lvl < 99) { rest -= need; lvl++; need = Math.round(need * 1.65); }
   return { level: lvl, cur: rest, need: need };
+};
+
+// Ключ дня в формате YYYY-MM-DD (локальная дата)
+Game.dayKey = function(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 };

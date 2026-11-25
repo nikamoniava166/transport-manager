@@ -26,6 +26,15 @@ Game.screens.office = {
     var full = total >= slots;
     var healRate = 0;
     mechs.forEach(function(m){ healRate += m.skill * 0.4; });
+    var chartDays = [];
+    var maxV = 1;
+    for (var ci = 6; ci >= 0; ci--) {
+      var cd = new Date(now - ci * 86400000);
+      var ck = Game.dayKey(cd);
+      var cf = (s.finance || {})[ck] || { in: 0, out: 0 };
+      chartDays.push({ day: cd.getDate(), in: cf.in || 0, out: cf.out || 0 });
+      maxV = Math.max(maxV, cf.in || 0, cf.out || 0);
+    }
     var places = '';
     s.drivers.forEach(function(){ places += '👨‍✈️'; });
     s.staff.forEach(function(p){ places += p.role === 'accountant' ? '🧾' : '🔧'; });
@@ -142,6 +151,24 @@ Game.screens.office = {
             · бонус бухгалтерии +${E.accountantBonus().toLocaleString('ru-RU')}%
           </div>
         ` : ''}
+      </div>
+
+      <div class="card">
+        <div class="card-title">Динамика за 7 дней</div>
+        <div class="chart">
+          ${chartDays.map(function(d){
+            var hi = Math.max(Math.round(d.in / maxV * 100), d.in ? 6 : 2);
+            var ho = Math.max(Math.round(d.out / maxV * 100), d.out ? 6 : 2);
+            return `<div class="chart-col">
+              <div class="chart-bars">
+                <i class="b-in" style="height:${hi}%"></i>
+                <i class="b-out" style="height:${ho}%"></i>
+              </div>
+              <div class="chart-day">${d.day}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="small muted" style="margin-top:8px"><span class="tag ok">доход</span> <span class="tag danger">расход</span> · максимум за день: ${Game.fmt.money(maxV)}</div>
       </div>
 
       <div class="card">

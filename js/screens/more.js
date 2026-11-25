@@ -4,6 +4,8 @@ Game.screens.more = {
 
   render: function(root){
     var s = Game.state;
+    var achDone = Object.keys(s.achievements || {}).length;
+    var achTotal = Game.data.achievements ? Game.data.achievements.length : 0;
 
     // Магазин Stars и рейтинг — только когда бэкенд подключён (js/net.js → BACKEND_URL)
     var shopHtml = '';
@@ -60,6 +62,20 @@ Game.screens.more = {
         ${s.stats.breakdowns ? '<div class="small muted" style="margin-top:6px">⚡ Поломок в пути: ' + s.stats.breakdowns + '</div>' : ''}
         <div class="divider" style="margin:10px 0 6px"></div>
         <div class="small muted">Персонал нанимается на вкладке «Офис» — водитель занимает одно рабочее место вместе с бухгалтерами и механиками</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Достижения — ${achDone} / ${achTotal}</div>
+        <div class="ach-grid">
+          ${Game.data.achievements.map(function(a){
+            var got = s.achievements && s.achievements[a.id];
+            return `<div class="ach${got ? ' got' : ''}">
+              <div class="ach-ico">${got ? a.icon : '🔒'}</div>
+              <div class="ach-name">${a.name}</div>
+              <div class="ach-desc">${a.desc}</div>
+            </div>`;
+          }).join('')}
+        </div>
       </div>
 
       ${shopHtml}

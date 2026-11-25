@@ -31,6 +31,9 @@
       stars: { boostUntil: 0, lastMoneyAt: 0 },
       stats: { tripsDone: 0, earned: 0, spent: 0, km: 0, breakdowns: 0 },
       settings: { sound: true, haptic: true },
+      achievements: {},
+      finance: {},
+      daily: { lastClaim: '', streak: 0 },
       created: Date.now(),
       lastSeen: Date.now()
     };
@@ -47,6 +50,9 @@
     out.salon         = Object.assign({}, d.salon,         (st && st.salon)         || {});
     out.salon.list    = Array.isArray(out.salon.list) ? out.salon.list : [];
     out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
+    out.achievements = (st && st.achievements && typeof st.achievements === 'object' && !Array.isArray(st.achievements)) ? st.achievements : {};
+    out.finance      = (st && st.finance && typeof st.finance === 'object' && !Array.isArray(st.finance)) ? st.finance : {};
+    out.daily        = Object.assign({}, d.daily, (st && st.daily) || {});
     // старые сейвы: кандидаты-водители из driversMarket переезжают в общий staffMarket
     if (st && st.driversMarket && Array.isArray(st.driversMarket.list)) {
       var dm = st.driversMarket, sm = out.staffMarket;

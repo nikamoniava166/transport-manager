@@ -72,6 +72,7 @@ Game.tick = function(){
   Game.updateHUD();
   var scr = Game.screens[Game.currentScreen];
   if (scr && scr.onTick) scr.onTick();
+  if (Game.economy.checkAchievements) Game.economy.checkAchievements();
   // деньги изменились — обновляем кнопки «по карману/не по карману»
   if (moneyChanged && scr && scr.moneySensitive) Game.navigate(Game.currentScreen, true);
 };

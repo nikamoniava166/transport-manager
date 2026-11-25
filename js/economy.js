@@ -843,11 +843,69 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return { ok: false };
   };
 
-  // Журнал операций для бухгалтерии
+  // Журнал операций для бухгалтерии + дневная сводка для графика на «Офисе»
   E.logOp = function(cat, amount, note){
     var s = Game.state;
+    amount = Math.round(amount);
     if (!Array.isArray(s.oplog)) s.oplog = [];
-    s.oplog.unshift({ t: Date.now(), cat: cat, amount: Math.round(amount), note: note });
+    s.oplog.unshift({ t: Date.now(), cat: cat, amount: amount, note: note });
     if (s.oplog.length > 60) s.oplog.length = 60;
+    if (!s.finance) s.finance = {};
+    var k = Game.dayKey();
+    var f = s.finance[k] || { in: 0, out: 0 };
+    if (cat === 'in') f.in += amount; else f.out += amount;
+    s.finance[k] = f;
+    var keys = Object.keys(s.finance).sort();
+    while (keys.length > 14) { delete s.finance[keys.shift()]; keys = Object.keys(s.finance).sort(); }
+  };
+
+  // Проверка достижений — раз в тик; новые — тост по очереди + конфетти
+  E.checkAchievements = function(){
+    var s = Game.state;
+    if (!s.achievements) s.achievements = {};
+    var fresh = [];
+    Game.data.achievements.forEach(function(a){
+      if (s.achievements[a.id]) return;
+      var got = false;
+      try { got = !!a.check(s); } catch (e) {}
+      if (got) { s.achievements[a.id] = Date.now(); fresh.push(a); }
+    });
+    if (fresh.length && Game.ui.ready) {
+      fresh.forEach(function(a, i){
+        setTimeout(function(){ Game.toast('🏅 Достижение: ' + a.name, 'ok'); }, i * 350);
+      });
+      Game.haptic('level');
+      if (Game.confetti) Game.confetti();
+      Game.save();
+    }
+    return fresh;
+  };
+
+  // ---------- ежедневный бонус ----------
+
+  E.dailyInfo = function(){
+    var s = Game.state;
+    if (!s.daily) s.daily = { lastClaim: '', streak: 0 };
+    var today = Game.dayKey();
+    var yesterday = Game.dayKey(new Date(Date.now() - 86400000));
+    var claimed = s.daily.lastClaim === today;
+    var nextStreak = (s.daily.lastClaim === yesterday) ? (s.daily.streak || 0) + 1 : 1;
+    var lvl = Game.levelInfo(s.xp).level;
+    var reward = Math.round((2000 + lvl * 1000) * (1 + Math.min(nextStreak - 1, 7) / 7));
+    return { claimed: claimed, streak: s.daily.streak || 0, nextStreak: nextStreak, reward: reward };
+  };
+
+  E.claimDaily = function(){
+    var s = Game.state;
+    var info = E.dailyInfo();
+    if (info.claimed) return { ok: false, msg: 'Бонус уже забран — приходите завтра' };
+    s.money += info.reward;
+    s.stats.earned += info.reward;
+    s.daily.lastClaim = Game.dayKey();
+    s.daily.streak = info.nextStreak;
+    E.logOp('in', info.reward, 'Ежедневный бонус');
+    Game.save();
+    Game.updateHUD();
+    return { ok: true, msg: '🎁 Бонус +' + Game.fmt.money(info.reward) + (info.nextStreak > 1 ? ' · серия ' + info.nextStreak + ' дн.' : ''), reward: info.reward };
   };
 })();
