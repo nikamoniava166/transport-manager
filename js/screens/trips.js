@@ -26,11 +26,18 @@
     Game.state.drivers.forEach(function(x){ if (x.uid === uid) r = x; });
     return r;
   }
+  function findTrailer(uid){
+    var r = null;
+    (Game.state.trailers || []).forEach(function(x){ if (x.uid === uid) r = x; });
+    return r;
+  }
 
   function activeCard(t){
     var o = t.order;
     var cargo = Game.data.cargo.find(function(c){ return c.id === o.cargoId; });
     var truck = findTruck(t.truckUid), driver = findDriver(t.driverUid);
+    var trailer = t.trailerUid ? findTrailer(t.trailerUid) : null;
+    var flags = o.flags || [];
     var p = Math.min(100, Math.max(0, (Date.now() - t.startedAt) / (t.endAt - t.startedAt) * 100));
     return `
       <div class="trip">
@@ -39,6 +46,7 @@
           <span class="small muted" data-trip="${t.uid}" data-remain>осталось ${Game.fmt.dur(t.endAt - Date.now())}</span>
         </div>
         <div class="li-sub" style="margin-top:2px">📍 ${Game.city(o.from).name} → ${Game.city(o.to).name} · ${o.km} км · 👨‍✈️ ${driver ? Game.esc(driver.name) : '—'}${o.urgent ? ' · срочный' : ''}</div>
+        ${flags.length ? '<div class="small muted" style="margin-top:2px">Требования: ' + flags.map(function(f){ return Game.flagLabel(f); }).join(', ') + (trailer ? ' · прицеп ' + Game.trailerType(trailer.tid).name : '') + '</div>' : ''}
         <div class="progress" style="margin:8px 0"><i data-trip="${t.uid}" data-bar style="width:${p.toFixed(1)}%"></i></div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div class="chips" data-trip="${t.uid}" data-events>${eventChips(t)}</div>

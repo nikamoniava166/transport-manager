@@ -3,7 +3,7 @@ window.Game = window.Game || {};
 Game.screens = {};
 
 Game.data = {
-  version: 1,
+  version: 2,
 
   // Экономика
   fuelPrice: 65,          // ₽ за литр
@@ -14,6 +14,13 @@ Game.data = {
   maxTripMin: 25,         // максимальная
   kmPerMin: 50,           // километров пути на реальную минуту (темп рейсов)
   roadK: 1.2,             // коэффициент извилистости дорог к прямой линии
+  longRouteKm: 500,       // с этого расстояния растёт оплата и снижается расход
+  longRouteScaleKm: 4000, // интервал плавного роста дальнего множителя
+  longRoutePayMax: 0.55,  // максимум +55 % к оплате за дальний маршрут
+  longRouteFuelDisc: 0.08,// максимум −8 % к расходу на дальнем маршруте
+  wearBase: 2.5,          // базовый износ за рейс, %
+  wearKmK: 700,           // км на каждый дополнительный 1 % износа
+  wearMax: 10,            // максимум износа за рейс без поломки, %
 
   // img — путь к картинке модели (например, 'img/trucks/kamaz.png'); показывается в салоне.
   // Пока путь не задан — салон рисует заглушку 🚛. Картинки можно подключить позже без правок кода.
@@ -52,18 +59,26 @@ Game.data = {
     { id:'spb',   name:'Санкт-Петербург',  lat:59.93, lon:30.34, lvl:2  },
     { id:'yar',   name:'Ярославль',        lat:57.63, lon:39.87, lvl:1  },
     { id:'vor',   name:'Воронеж',          lat:51.66, lon:39.20, lvl:1  },
+    { id:'pskov', name:'Псков',            lat:59.93, lon:28.75, lvl:2  },
     { id:'nn',    name:'Нижний Новгород',  lat:56.33, lon:44.00, lvl:3  },
     { id:'kaz',   name:'Казань',           lat:55.79, lon:49.11, lvl:3  },
     { id:'rost',  name:'Ростов-на-Дону',   lat:47.23, lon:39.72, lvl:3  },
+    { id:'orel',  name:'Орёл',             lat:52.97, lon:36.06, lvl:3  },
     { id:'kras',  name:'Краснодар',        lat:45.03, lon:38.98, lvl:4  },
     { id:'volg',  name:'Волгоград',        lat:48.71, lon:44.51, lvl:4  },
     { id:'sar',   name:'Саратов',          lat:51.55, lon:46.03, lvl:4  },
     { id:'sam',   name:'Самара',           lat:53.20, lon:50.15, lvl:5  },
     { id:'ufa',   name:'Уфа',              lat:54.73, lon:55.97, lvl:5  },
+    { id:'ul',    name:'Ульяновск',        lat:54.32, lon:48.39, lvl:5  },
     { id:'che',   name:'Челябинск',        lat:55.16, lon:61.40, lvl:6  },
     { id:'ekb',   name:'Екатеринбург',     lat:56.84, lon:60.65, lvl:6  },
     { id:'sochi', name:'Сочи',             lat:43.60, lon:39.73, lvl:7  },
+    { id:'perm',  name:'Пермь',            lat:59.00, lon:56.31, lvl:7  },
+    { id:'tyum',  name:'Тюмень',           lat:57.15, lon:65.53, lvl:8  },
+    { id:'omsk',  name:'Омск',             lat:54.99, lon:73.32, lvl:9  },
     { id:'nsk',   name:'Новосибирск',      lat:55.03, lon:82.92, lvl:10 },
+    { id:'krsn',  name:'Красноярск',       lat:56.02, lon:92.89, lvl:11 },
+    { id:'irk',   name:'Иркутск',          lat:52.29, lon:104.31, lvl:14 },
   ],
 
   cargo: [
@@ -73,19 +88,27 @@ Game.data = {
     { id:'tech',      name:'Бытовая техника',      min:0.2, max:2,  lvl:2,  mult:1.3 },
     { id:'agro',      name:'Сельхозпродукция',     min:1,   max:15, lvl:3,  mult:1.1 },
     { id:'elec',      name:'Электроника',          min:0.1, max:1,  lvl:4,  mult:1.8 },
-    { id:'reefer',    name:'Рефрижераторный груз', min:1,   max:10, lvl:6,  mult:1.5, flags:['reefer'] },
+    { id:'grain',     name:'Зерно и корма',         min:5,   max:30, lvl:5,  mult:1.35, flags:['bulk'] },
+    { id:'sand',      name:'Песок и щебень',        min:10,  max:35, lvl:5,  mult:1.2,  flags:['bulk'] },
+    { id:'reefer',    name:'Рефрижераторный груз', min:1,   max:10, lvl:6,  mult:1.5,  flags:['reefer'] },
+    { id:'milk',      name:'Молоко',               min:5,   max:20, lvl:6,  mult:1.6,  flags:['liquid'] },
+    { id:'cement',    name:'Цемент',               min:10,  max:30, lvl:7,  mult:1.5,  flags:['bulk'] },
     { id:'container', name:'Контейнер',            min:10,  max:25, lvl:8,  mult:1.4 },
-    { id:'adr',       name:'Опасный груз (ADR)',   min:5,   max:20, lvl:10, mult:2.0, flags:['adr'] },
+    { id:'oil',       name:'Растительное масло',   min:10,  max:25, lvl:8,  mult:1.75, flags:['liquid'] },
+    { id:'adr',       name:'Опасный груз (ADR)',   min:5,   max:20, lvl:10, mult:2.0,  flags:['adr'] },
   ],
 
   // Прицепы: minCap — минимальная грузоподъёмность тягача (базовая, без прицепа),
-  // consAdd — надбавка к расходу топлива, flags — какие требования грузов закрывают
+  // consAdd — надбавка к расходу топлива, wearK — множитель износа прицепа,
+  // flags — какие требования грузов закрывают
   trailers: [
-    { id:'light',     name:'Лёгкий прицеп',          price:35000,  capAdd:1.5, minCap:1.5, consAdd:0.10, flags:[]          },
-    { id:'tarp',      name:'Тентованный прицеп',     price:120000, capAdd:8,   minCap:5,   consAdd:0.15, flags:[]          },
-    { id:'reefer',    name:'Рефрижераторный прицеп', price:250000, capAdd:10,  minCap:10,  consAdd:0.20, flags:['reefer']  },
-    { id:'tank',      name:'Цистерна (ADR)',         price:400000, capAdd:12,  minCap:20,  consAdd:0.20, flags:['adr']      },
-    { id:'roadtrain', name:'Полуприцеп «Автопоезд»', price:900000, capAdd:20,  minCap:25,  consAdd:0.25, flags:[]          },
+    { id:'light',     name:'Лёгкий прицеп',                 price:35000,  capAdd:1.5, minCap:1.5, consAdd:0.10, flags:[]          },
+    { id:'tarp',      name:'Тентованный прицеп',            price:120000, capAdd:8,   minCap:5,   consAdd:0.15, flags:[]          },
+    { id:'reefer',    name:'Рефрижераторный прицеп',        price:250000, capAdd:10,  minCap:10,  consAdd:0.20, flags:['reefer']  },
+    { id:'tank',      name:'Цистерна (ADR)',                price:400000, capAdd:12,  minCap:20,  consAdd:0.20, flags:['adr']      },
+    { id:'roadtrain', name:'Полуприцеп «Автопоезд»',        price:900000, capAdd:20,  minCap:25,  consAdd:0.25, flags:[]          },
+    { id:'bulk',      name:'Саморазгружающийся полуприцеп',price:650000, capAdd:25,  minCap:10,  consAdd:0.30, wearK:1.15, flags:['bulk']  },
+    { id:'liquid',    name:'Цистерна для наливных грузов',   price:750000, capAdd:20,  minCap:10,  consAdd:0.25, wearK:1.05, flags:['liquid']},
   ],
 
   upgrades: [
@@ -118,6 +141,22 @@ Game.data = {
     { id:'million', icon:'💎', name:'Миллионер',        desc:'Накопить 1 000 000 ₽',         check: function(s){ return s.money >= 1000000; } },
     { id:'km100k',  icon:'🌍', name:'100 000 км',       desc:'Пройти 100 000 км по дорогам', check: function(s){ return s.stats.km >= 100000; } },
   ],
+};
+
+Game.flagInfo = {
+  reefer: { name:'рефрижератор', short:'Реф',  requirement:'Нужен рефрижераторный прицеп' },
+  adr:    { name:'ADR',          short:'ADR',  requirement:'Нужна цистерна (ADR)' },
+  bulk:   { name:'насыпной',     short:'Насыпь', requirement:'Нужен саморазгружающийся прицеп' },
+  liquid: { name:'наливной',     short:'Налив',  requirement:'Нужна цистерна для наливных грузов' }
+};
+Game.flagLabel = function(flag, short){
+  var info = Game.flagInfo[flag];
+  if (!info) return flag;
+  return short ? info.short : info.name;
+};
+Game.flagRequirement = function(flag){
+  var info = Game.flagInfo[flag];
+  return info ? info.requirement : 'Нужен подходящий прицеп';
 };
 
 Game.truck = function(id){ return Game.data.trucks.find(function(t){ return t.id === id; }); };

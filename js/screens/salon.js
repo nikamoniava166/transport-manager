@@ -8,7 +8,7 @@
 // картинки машин — поле img у модели в js/data.js (пусто → заглушка 🚛).
 (function(){
   function wearColor(w){ return w < 40 ? 'var(--ok)' : w < 70 ? 'var(--warn)' : 'var(--danger)'; }
-  function flagLabel(f){ return f === 'reefer' ? '❄️ реф' : '☣️ ADR'; }
+  function flagLabel(f){ return Game.flagLabel(f, true); }
 
   // ---------- б/у грузовики ----------
 
@@ -146,7 +146,7 @@
               <div class="li-ico">🛻</div>
               <div class="li-main">
                 <div class="li-title">${TT.name}${TT.flags.length ? ' ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
-                <div class="li-sub">+${Game.fmt.ton(TT.capAdd)} к грузоподъёмности · расход +${Math.round(TT.consAdd * 100)}% · тягач от ${Game.fmt.ton(TT.minCap)}${compatible ? '' : ' · 🔒 нет подходящего грузовика'}</div>
+                <div class="li-sub">+${Game.fmt.ton(TT.capAdd)} к грузоподъёмности · расход +${Math.round(TT.consAdd * 100)}%${TT.wearK > 1 ? ' · износ +' + Math.round((TT.wearK - 1) * 100) + '%' : ''} · тягач от ${Game.fmt.ton(TT.minCap)}${compatible ? '' : ' · 🔒 нет подходящего грузовика'}</div>
               </div>
               <button class="btn small" data-buytrailer="${TT.id}" ${afford ? '' : 'disabled'}>${Game.fmt.money(TT.price)}</button>
             </div>`;

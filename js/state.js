@@ -73,6 +73,19 @@
     out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
     out.drivers  = Array.isArray(out.drivers)  ? out.drivers  : d.drivers;
     out.trips    = Array.isArray(out.trips)    ? out.trips    : [];
+    // старые рейсы не хранили требования груза и id прицепа — восстанавливаем их
+    out.trips.forEach(function(t){
+      if (!t.order) return;
+      if (!Array.isArray(t.order.flags)) {
+        var cargo = Game.data.cargo.find(function(c){ return c.id === t.order.cargoId; });
+        t.order.flags = cargo ? (cargo.flags || []).slice() : [];
+      }
+      if (t.status === 'active' && t.trailerUid == null) {
+        out.trailers.forEach(function(trailer){
+          if (trailer.attachedTo === t.truckUid) t.trailerUid = trailer.uid;
+        });
+      }
+    });
     out.uidSeq   = Math.max(out.uidSeq || 100, 100);
     out.v        = Game.data.version;
     return out;

@@ -14,7 +14,7 @@ Game.screens.market = {
       var from = Game.city(o.from).name, to = Game.city(o.to).name;
       var min = Math.round(Math.max(Game.data.minTripMin, Math.min(Game.data.maxTripMin, o.km / Game.data.kmPerMin)) * (o.urgent ? 0.75 : 1));
       var flags = o.flags || [];
-      var flagTags = flags.map(function(f){ return f === 'reefer' ? '<span class="tag accent">❄️ нужен реф-прицеп</span>' : '<span class="tag warn">☣️ нужна цистерна ADR</span>'; }).join('');
+      var flagTags = flags.map(function(f){ return '<span class="tag warn">' + Game.flagRequirement(f) + '</span>'; }).join('');
       function fits(tr){
         if (E.isBusy(tr.uid)) return false;
         var e = E.effTruck(tr);
@@ -25,12 +25,12 @@ Game.screens.market = {
         var e = E.effTruck(tr);
         return flags.every(function(f){ return e.flags.indexOf(f) >= 0; });
       });
-      var noFitLabel = (flags.length && !anyFlagged) ? 'Нужен прицеп: ' + (flags[0] === 'reefer' ? 'рефрижератор' : 'цистерна') : 'Нет свободной машины под груз';
+      var noFitLabel = (flags.length && !anyFlagged) ? Game.flagRequirement(flags[0]) : 'Нет свободной машины под груз';
       var panel = '';
       if (Game.ui.dispatchOrderUid === o.uid) panel = dispatchPanel(o);
       return `
         <div class="card">
-          <div class="li-title">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочный ×1,5</span>' : ''}</div>
+          <div class="li-title">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочный ×1,4</span>' : ''}</div>
           <div class="li-sub" style="margin-top:4px">📍 ${from} → ${to} · ${o.km} км · ≈${min} мин · ⏳ ${Math.max(1, Math.round((o.expiresAt - now) / 60000))} мин на бирже</div>
           <div style="margin-top:8px">
             <span class="tag accent">💰 ${Game.fmt.money(o.pay)}</span>
@@ -70,7 +70,8 @@ Game.screens.market = {
       }
       if (selDriver && (E.driverBusy(selDriver.uid) || selDriver.restUntil > now)) selDriver = null;
 
-      var fuel = selTruck ? E.fuelCost(o.km, E.effTruck(selTruck).cons) : 0;
+      var selEff = selTruck ? E.effTruck(selTruck) : null;
+      var fuel = selEff ? E.fuelCost(o.km, selEff.cons, selEff.elec) : 0;
       var advance = selDriver ? Math.round(o.pay * selDriver.share / 100) : 0;
       var enough = s.money >= fuel + advance;
       var ok = !!(selTruck && selDriver && enough);

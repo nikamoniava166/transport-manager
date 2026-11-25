@@ -9,7 +9,7 @@ Game.screens.garage = {
     var pickFor = Game.ui.garageTrailerFor || null;
 
     function wearColor(w){ return w < 40 ? 'var(--ok)' : w < 70 ? 'var(--warn)' : 'var(--danger)'; }
-    function flagLabel(f){ return f === 'reefer' ? '❄️ реф' : '☣️ ADR'; }
+    function flagLabel(f){ return Game.flagLabel(f, true); }
 
     function upPanel(tr){
       var rows = D.upgrades.map(function(U){

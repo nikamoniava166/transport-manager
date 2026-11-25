@@ -341,16 +341,25 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
   // ---------- деньги ----------
 
+  E.distancePayMult = function(km){
+    var D = Game.data;
+    var extra = Math.max(0, km - D.longRouteKm);
+    return 1 + Math.min(D.longRoutePayMax, extra / D.longRouteScaleKm);
+  };
+
   E.orderPay = function(km, weight, mult, urgent){
-    // затухание по дистанции: дальний рейс платит не линейно, иначе Газель на дальняке ловит 15–30 тыс.
+    // затухание по дистанции сохраняется, а дальний маршрут получает бонус за простой и риск
     var kmPart = Math.pow(Math.max(km, 10), 0.92) * 28;
     var wPart = 0.75 + (weight || 0) * 0.14;
-    return Math.round((300 + kmPart) * wPart * (mult || 1) * (urgent ? 1.4 : 1));
+    return Math.round((300 + kmPart) * wPart * (mult || 1) * E.distancePayMult(km) * (urgent ? 1.4 : 1));
   };
 
   E.fuelCost = function(km, cons, elec){
-    // электрогрузовики заправляются электричеством — оно сильно дешевле солярки
-    return Math.round(km * cons / 100 * (elec ? Game.data.fuelPriceElec : Game.data.fuelPrice));
+    // электрогрузовики заправляются электричеством; на дальних маршрутах расход немного ниже
+    var D = Game.data;
+    var extra = Math.max(0, km - D.longRouteKm);
+    var discount = Math.min(D.longRouteFuelDisc, extra / D.longRouteScaleKm);
+    return Math.round(km * cons / 100 * (elec ? D.fuelPriceElec : D.fuelPrice) * (1 - discount));
   };
 
   // ---------- время рейса ----------
@@ -428,7 +437,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var cargos = Game.data.cargo.filter(function(c){
       if (c.lvl > lvl || c.min > fleetCap) return false;
       var fl = c.flags || [];
-      for (var i = 0; i < fl.length; i++) if (!flaggedCap[fl[i]]) return false;
+      for (var i = 0; i < fl.length; i++) if (!flaggedCap[fl[i]] || flaggedCap[fl[i]] < c.min) return false;
       return true;
     });
     if (!cargos.length) return null;
@@ -482,7 +491,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var eff = E.effTruck(tr);
     if (eff.cap < order.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (order.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
-    if (missing.length) return { ok: false, msg: missing[0] === 'reefer' ? 'Нужен рефрижераторный прицеп' : 'Нужна цистерна (ADR)' };
+    if (missing.length) return { ok: false, msg: Game.flagRequirement(missing[0]) };
     var fuel = E.fuelCost(order.km, eff.cons, eff.elec);
     var advance = Math.round(order.pay * dr.share / 100);
     if (s.money < fuel + advance) return { ok: false, msg: 'Не хватает на топливо и аванс: ' + Game.fmt.money(fuel + advance) };
@@ -509,9 +518,11 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       status: 'active',
       order: {
         cargoId: order.cargoId, from: order.from, to: order.to,
-        km: order.km, weight: order.weight, pay: order.pay, urgent: order.urgent
+        km: order.km, weight: order.weight, pay: order.pay, urgent: order.urgent,
+        flags: (order.flags || []).slice()
       },
       truckUid: truckUid, driverUid: driverUid,
+      trailerUid: eff.trailer ? eff.trailer.uid : null,
       startedAt: Date.now(),
       endAt: Date.now() + duration,
       events: events.map(function(ev){
@@ -572,12 +583,18 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       var dr = null;
       s.drivers.forEach(function(x){ if (x.uid === t.driverUid) dr = x; });
       var care = dr ? dr.skills.care : 0;
-      var wearAdd = Math.min(8, 3 + o.km / 500) * (1 - care * 0.03) * (1 - E.mechanicWearReduction());
+      var wearAdd = Math.min(Game.data.wearMax, Game.data.wearBase + o.km / Game.data.wearKmK) * (1 - care * 0.03) * (1 - E.mechanicWearReduction());
       if (t.brk) wearAdd += 15;
       tr.wear = Math.min(100, Math.round((tr.wear + wearAdd) * 10) / 10);
-      // прицеп изнашивается чуть медленнее тягача
-      var trailer = E.trailerOf(tr.uid);
-      if (trailer) trailer.wear = Math.min(100, Math.round((trailer.wear + wearAdd * 0.8) * 10) / 10);
+      // прицеп изнашивается чуть медленнее тягача; абразивные грузы дают дополнительный износ
+      var trailer = null;
+      if (t.trailerUid) s.trailers.forEach(function(x){ if (x.uid === t.trailerUid) trailer = x; });
+      if (!trailer) trailer = E.trailerOf(tr.uid);
+      if (trailer) {
+        var TT = Game.trailerType(trailer.tid);
+        var trailerWear = wearAdd * 0.8 * (TT.wearK || 1);
+        trailer.wear = Math.min(100, Math.round((trailer.wear + trailerWear) * 10) / 10);
+      }
     }
     // водитель отдыхает
     var d2 = null;
