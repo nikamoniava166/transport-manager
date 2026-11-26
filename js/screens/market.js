@@ -60,17 +60,18 @@ Game.screens.market = {
       }
       if (!selTruck && fitTrucks.length) selTruck = fitTrucks[0];
 
-      // выбранный водитель: сохранённый или первый готовый
+      // выбранный водитель: закреплённый за этой машиной или сохранённый
       var selDriver = null;
       if (Game.ui.mktSel && Game.ui.mktSel.driverUid) {
         s.drivers.forEach(function(d){ if (d.uid === Game.ui.mktSel.driverUid) selDriver = d; });
       }
-      if (!selDriver) {
-        s.drivers.forEach(function(d){
-          if (!E.driverBusy(d.uid) && d.restUntil <= now) selDriver = d;
-        });
+      function drvFits(d){
+        return !E.driverBusy(d.uid) && d.restUntil <= now && (d.fatigue || 0) < 100 && !!selTruck && d.truckUid === selTruck.uid;
       }
-      if (selDriver && (E.driverBusy(selDriver.uid) || selDriver.restUntil > now)) selDriver = null;
+      if (!selDriver || !drvFits(selDriver)) {
+        selDriver = null;
+        s.drivers.forEach(function(d){ if (!selDriver && drvFits(d)) selDriver = d; });
+      }
 
       var selEff = selTruck ? E.effTruck(selTruck) : null;
       var fuel = selEff ? E.fuelCost(o.km, selEff.cons, selEff.elec) : 0;
@@ -93,10 +94,17 @@ Game.screens.market = {
       var driverChips = s.drivers.map(function(d){
         var busy = E.driverBusy(d.uid);
         var rest = !busy && d.restUntil > now;
+        var tired = !busy && !rest && (d.fatigue || 0) >= 100;
+        var wrongTruck = !busy && !rest && !tired && selTruck && d.truckUid !== selTruck.uid;
         var sel = selDriver && selDriver.uid === d.uid;
-        var label = Game.esc(d.name) + (busy ? ' · в рейсе' : rest ? ' · отдых ' + Math.ceil((d.restUntil - now) / 60000) + ' мин' : '');
-        return `<button class="chip ${sel ? 'sel' : ''}" ${(busy || rest) ? 'disabled' : ''} data-dsel="${d.uid}">${label}</button>`;
+        var hint = busy ? ' · в рейсе'
+          : rest ? ' · отдых ' + Math.ceil((d.restUntil - now) / 60000) + ' мин'
+          : tired ? ' · 😵 устал'
+          : wrongTruck ? (d.truckUid ? ' · за другой машиной' : ' · без машины') : '';
+        return `<button class="chip ${sel ? 'sel' : ''}" ${(busy || rest || tired || wrongTruck) ? 'disabled' : ''} data-dsel="${d.uid}">${Game.esc(d.name)}${hint}</button>`;
       }).join('');
+      var drvNote = selTruck && !s.drivers.some(function(d){ return d.truckUid === selTruck.uid; })
+        ? '<div class="small muted" style="margin-top:4px">За этой машиной никто не закреплён — закрепите водителя в «Автопарке» или «Офисе»</div>' : '';
 
       return `
         <div class="panel">
@@ -107,6 +115,7 @@ Game.screens.market = {
           </div>
           <div class="small muted" style="margin:6px 0">Водитель</div>
           <div class="chips">${driverChips || '<span class="small muted">Нет водителей — наймите в разделе «Ещё»</span>'}</div>
+          ${drvNote}
           <div class="small" style="margin-top:8px">
             ⛽ Топливо: <b style="color:var(--danger)">${Game.fmt.money(fuel)}</b> ·
             👨‍✈️ Аванс: <b style="color:var(--danger)">${Game.fmt.money(advance)}</b> ·

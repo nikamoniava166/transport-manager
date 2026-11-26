@@ -50,6 +50,20 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return Game.state.trips.some(function(t){ return t.status === 'active' && t.driverUid === driverUid; });
   };
 
+  // Общие проверки пары «машина + водитель» перед любым рейсом
+  E.crewError = function(tr, dr){
+    var now = Date.now();
+    if (!tr || !dr) return 'Выберите машину и водителя';
+    if (E.isBusy(tr.uid)) return 'Машина уже в рейсе';
+    if ((tr.tires || 0) >= Game.data.tireMaxWear) return 'Шины изношены — замените комплект в автопарке';
+    if (E.driverBusy(dr.uid)) return 'Водитель уже в рейсе';
+    if (dr.restUntil > now) return 'Водитель отдыхает';
+    if ((dr.fatigue || 0) >= 100) return 'Водитель слишком устал — отправьте на отдых';
+    if (!dr.truckUid) return 'Водитель не закреплён за машиной — закрепите в «Автопарке» или «Офисе»';
+    if (dr.truckUid !== tr.uid) return 'Водитель закреплён за другой машиной';
+    return null;
+  };
+
   E.repairCost = function(tr){
     var T = Game.truck(tr.tid);
     if (tr.wear <= 0) return 0;
@@ -293,6 +307,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var price = E.sellPrice(T.price, tr.wear);
     var trailer = E.trailerOf(truckUid);
     if (trailer) trailer.attachedTo = null; // прицеп не продаётся вместе с машиной — остаётся на складе
+    // закреплённый водитель остаётся без машины
+    s.drivers.forEach(function(d){ if (d.truckUid === truckUid) d.truckUid = null; });
     s.trucks = s.trucks.filter(function(x){ return x.uid !== truckUid; });
     s.money += price;
     E.logOp('in', price, 'Продажа: ' + T.name);
@@ -449,6 +465,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var tireWear = tr.tires || 0;
     if (tireWear > Game.data.tireRiskWear) brkChance += (tireWear - Game.data.tireRiskWear) / 100 * 0.3;
     if (Math.random() < brkChance) events.push({ type: 'breakdown', atFrac: Game.rnd(0.3, 0.8) });
+    // уставший водитель ошибается чаще
+    var fat = driver ? Math.min(100, driver.fatigue || 0) : 0;
+    if (fat > Game.data.fatigueRiskFrom) brkChance += (fat - Game.data.fatigueRiskFrom) / 100 * 0.25;
     // остальные события, удача смещает веса
     var pool = [
       { type: 'traffic',    w: 30 * (1 - luck * 0.03) },
@@ -544,7 +563,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     E.logOp('out', advance, pfx + 'Аванс водителю: ' + dr.name);
 
     var events = E.rollEvents(tr, eff, dr);
-    var minutes = E.tripMinutes(orderLike.km, urgent, eff.speed, dr.skills.speed);
+    // усталость снижает эффективность навыка скорости (до −50 %)
+    var fat = Math.min(100, dr.fatigue || 0);
+    var minutes = E.tripMinutes(orderLike.km, urgent, eff.speed, dr.skills.speed * (1 - fat / 200));
     var duration = minutes * 60000;
     var extraTime = 0, extraPay = 0, fines = 0, brk = false;
     events.forEach(function(ev){
@@ -587,11 +608,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var tr = null, dr = null;
     s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
     s.drivers.forEach(function(x){ if (x.uid === driverUid) dr = x; });
-    if (!tr || !dr) return { ok: false, msg: 'Выберите машину и водителя' };
-    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина уже в рейсе' };
-    if ((tr.tires || 0) >= Game.data.tireMaxWear) return { ok: false, msg: 'Шины изношены — замените комплект в автопарке' };
-    if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель уже в рейсе' };
-    if (dr.restUntil > Date.now()) return { ok: false, msg: 'Водитель отдыхает' };
+    var crewErr = E.crewError(tr, dr);
+    if (crewErr) return { ok: false, msg: crewErr };
     var eff = E.effTruck(tr);
     if (eff.cap < order.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (order.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
@@ -679,11 +697,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var tr = null, dr = null;
     s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
     s.drivers.forEach(function(x){ if (x.uid === driverUid) dr = x; });
-    if (!tr || !dr) return { ok: false, msg: 'Выберите машину и водителя' };
-    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина уже в рейсе' };
-    if ((tr.tires || 0) >= Game.data.tireMaxWear) return { ok: false, msg: 'Шины изношены — замените комплект в автопарке' };
-    if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель уже в рейсе' };
-    if (dr.restUntil > now) return { ok: false, msg: 'Водитель отдыхает' };
+    var crewErr2 = E.crewError(tr, dr);
+    if (crewErr2) return { ok: false, msg: crewErr2 };
     var eff = E.effTruck(tr);
     if (eff.cap < c.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (c.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
@@ -762,10 +777,10 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         trailer.wear = Math.min(100, Math.round((trailer.wear + trailerWear) * 10) / 10);
       }
     }
-    // водитель отдыхает
+    // водитель устает: отдых теперь только по команде игрока
     var d2 = null;
     s.drivers.forEach(function(x){ if (x.uid === t.driverUid) d2 = x; });
-    if (d2) d2.restUntil = Date.now() + Math.round(60000 * (1 + o.km / 1000 * 0.4));
+    if (d2) d2.fatigue = Math.min(100, Math.round(((d2.fatigue || 0) + Game.data.fatigueBase + o.km / Game.data.fatigueKmPerPoint) * 10) / 10);
     // контракт: рейс двигает серию; полная серия — бонус и закрытие контракта
     if (t.contractUid && s.contracts && s.contracts.active && s.contracts.active.uid === t.contractUid) {
       var cc = s.contracts.active;
@@ -800,6 +815,13 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         E.resolveTrip(t);
         resolved++;
         earned += t.payFinal;
+      }
+    });
+    // завершившийся отдых снимает усталость
+    s.drivers.forEach(function(d){
+      if (d.restFromFatigue && d.restUntil && d.restUntil <= now) {
+        d.fatigue = Math.max(0, Math.round(((d.fatigue || 0) - d.restFromFatigue) * 10) / 10);
+        d.restFromFatigue = 0;
       }
     });
     // контракты: провал по сроку
@@ -871,10 +893,54 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var cand = null;
     s.staffMarket.list.forEach(function(c){ if (c.uid === candUid) cand = c; });
     if (!cand || cand.role !== 'driver') return { ok: false, msg: 'Кандидат уже нанят' };
-    s.drivers.push({ uid: cand.uid, name: cand.name, skills: cand.skills, share: cand.share, restUntil: 0 });
+    s.drivers.push({ uid: cand.uid, name: cand.name, skills: cand.skills, share: cand.share, restUntil: 0, fatigue: 0, truckUid: null });
     s.staffMarket.list = s.staffMarket.list.filter(function(c){ return c.uid !== candUid; });
     Game.save();
     return { ok: true, msg: '👨‍✈️ ' + cand.name + ' принят на работу' };
+  };
+
+  // Отдых по команде игрока: длительность зависит от усталости
+  E.restDriver = function(driverUid){
+    var s = Game.state;
+    var d = null;
+    s.drivers.forEach(function(x){ if (x.uid === driverUid) d = x; });
+    if (!d) return { ok: false, msg: 'Водитель не найден' };
+    if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель в рейсе' };
+    if (d.restUntil > Date.now()) return { ok: false, msg: 'Водитель уже отдыхает' };
+    var fat = d.fatigue || 0;
+    if (fat < 10) return { ok: false, msg: 'Водитель почти не устал' };
+    var minutes = Math.max(3, Math.round(fat * Game.data.restMinPerFatigue));
+    d.restUntil = Date.now() + minutes * 60000;
+    d.restFromFatigue = fat;
+    Game.save();
+    return { ok: true, msg: '😴 ' + d.name + ' отдыхает ~' + minutes + ' мин' };
+  };
+
+  // Закрепление водителя за машиной: одна машина — один водитель
+  E.attachDriver = function(driverUid, truckUid){
+    var s = Game.state;
+    var d = null, tr = null;
+    s.drivers.forEach(function(x){ if (x.uid === driverUid) d = x; });
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!d || !tr) return { ok: false, msg: 'Не найдено' };
+    if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель в рейсе' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе' };
+    var taken = s.drivers.some(function(x){ return x.uid !== driverUid && x.truckUid === truckUid; });
+    if (taken) return { ok: false, msg: 'К этой машине уже закреплён водитель' };
+    d.truckUid = truckUid;
+    Game.save();
+    return { ok: true, msg: '👨‍✈️ ' + d.name + ' закреплён за ' + Game.truck(tr.tid).name + ' №' + tr.uid };
+  };
+
+  E.detachDriver = function(driverUid){
+    var s = Game.state;
+    var d = null;
+    s.drivers.forEach(function(x){ if (x.uid === driverUid) d = x; });
+    if (!d) return { ok: false, msg: 'Водитель не найден' };
+    if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель в рейсе' };
+    d.truckUid = null;
+    Game.save();
+    return { ok: true, msg: d.name + ' теперь без машины' };
   };
 
   E.fire = function(driverUid){

@@ -75,6 +75,8 @@ Game.screens.garage = {
       var eff = E.effTruck(tr);
       var tier = D.trucks.findIndex(function(x){ return x.id === tr.tid; }) + 1;
       var busy = E.isBusy(tr.uid);
+      var drv = null;
+      s.drivers.forEach(function(x){ if (x.truckUid === tr.uid) drv = x; });
       var repairCost = E.repairCost(tr);
       var needRepair = tr.wear > 0 && !busy; // деньги/запчасти проверит E.repair — тост объяснит, чего не хватает
       var tireW = tr.tires || 0;
@@ -84,6 +86,17 @@ Game.screens.garage = {
       var sellPrice = E.sellPrice(T.price, tr.wear);
       var canSell = !busy && s.trucks.length > 1;
       var panel = Game.ui.garageUpUid === tr.uid ? upPanel(tr) : '';
+      var drvBlock = '';
+      if (Game.ui.garageDrvFor === tr.uid) {
+        var freeDrv = s.drivers.filter(function(x){ return !x.truckUid && !E.driverBusy(x.uid); });
+        drvBlock = `<div class="panel" style="padding-top:8px"><div class="small muted">Кто поедет на этой машине:</div><div class="chips">${
+          freeDrv.map(function(x){ return `<button class="chip" data-attdrv="${x.uid}|${tr.uid}">${Game.esc(x.name)}</button>`; }).join('') || '<span class="small muted">Свободных водителей нет</span>'
+        }</div><button class="btn secondary small" data-drvpickoff="1" style="margin-top:4px">Отмена</button></div>`;
+      } else if (drv) {
+        drvBlock = `<button class="btn secondary small" data-detdrv="${drv.uid}" ${E.driverBusy(drv.uid) ? 'disabled' : ''}>🔓 Открепить ${Game.esc(drv.name)}</button>`;
+      } else {
+        drvBlock = `<button class="btn secondary small" data-drvpick="${tr.uid}">👨‍✈️ Закрепить водителя</button>`;
+      }
       return `
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -91,6 +104,7 @@ Game.screens.garage = {
             <span class="tag">Т${tier} · №${tr.uid}</span>
           </div>
           <div class="li-sub" style="margin-top:4px">${Game.fmt.ton(eff.cap)} груз${eff.trailer ? ' (с прицепом)' : ''} · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ⚡' : 'л/100 км'} · надёжность ${eff.rel}%${tr.km > 0 ? ' · пробег ' + Game.fmt.km(tr.km) : ''}</div>
+          <div class="li-sub">👨‍✈️ ${drv ? Game.esc(drv.name) + (E.driverBusy(drv.uid) ? ' · в рейсе' : ' · усталость ' + Math.round(drv.fatigue || 0) + '%') : '<b>без водителя — рейсов не берёт</b>'}</div>
           <div class="wear">
             <div class="progress"><i style="width:${Math.min(100, tr.wear)}%;background:${wearColor(tr.wear)}"></i></div>
             <div class="val">износ ${Math.round(tr.wear)}%</div>
@@ -109,6 +123,7 @@ Game.screens.garage = {
             <button class="btn secondary small" data-tires="${tr.uid}" ${canTires ? '' : 'disabled'}>🛞 Шины · ${D.tireSetSize} шт</button>
             <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? '🏷 Продать · ' + Game.fmt.money(sellPrice) : '🏷 Продать (последняя)'}</button>
           </div>
+          <div class="row" style="margin-top:6px">${drvBlock}</div>
         </div>`;
     }
 
@@ -231,6 +246,38 @@ Game.screens.garage = {
         var p = b.getAttribute('data-buyw').split('|');
         var r = p[0] === 'parts' ? E.buyParts(+p[1]) : E.buyTires(+p[1]);
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-drvpick]').forEach(function(b){
+      b.onclick = function(){
+        Game.haptic('tap');
+        var uid = +b.getAttribute('data-drvpick');
+        Game.ui.garageDrvFor = Game.ui.garageDrvFor === uid ? null : uid;
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-drvpickoff]').forEach(function(b){
+      b.onclick = function(){
+        Game.ui.garageDrvFor = null;
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-attdrv]').forEach(function(b){
+      b.onclick = function(){
+        var p = b.getAttribute('data-attdrv').split('|');
+        var r = E.attachDriver(+p[0], +p[1]);
+        Game.ui.garageDrvFor = null;
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-detdrv]').forEach(function(b){
+      b.onclick = function(){
+        var r = E.detachDriver(+b.getAttribute('data-detdrv'));
+        if (r.ok) { Game.haptic('tap'); Game.toast(r.msg); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);
       };

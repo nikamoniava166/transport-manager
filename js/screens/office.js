@@ -34,17 +34,32 @@ Game.screens.office = {
     function driverStatus(d){
       if (E.driverBusy(d.uid)) return '<span class="tag accent">🛣️ в рейсе</span>';
       if (d.restUntil > now) return '<span class="tag warn" data-driver-rest="' + d.uid + '">😴 отдых ' + Game.fmt.dur(d.restUntil - now) + '</span>';
-      return '<span class="tag ok">готов</span>';
+      if ((d.fatigue || 0) >= 100) return '<span class="tag danger">😵 устал — нужен отдых</span>';
+      return '<span class="tag ok">готов · усталость ' + Math.round(d.fatigue || 0) + '%</span>';
     }
 
     function driverRow(d){
+      var dTruck = null;
+      if (d.truckUid) s.trucks.forEach(function(x){ if (x.uid === d.truckUid) dTruck = x; });
+      var canRest = !E.driverBusy(d.uid) && d.restUntil <= now && (d.fatigue || 0) >= 10;
+      var attachHtml;
+      if (Game.ui.attachDrvFor === d.uid) {
+        var freeTr = s.trucks.filter(function(x){ return !E.isBusy(x.uid) && !s.drivers.some(function(dd){ return dd.uid !== d.uid && dd.truckUid === x.uid; }); });
+        attachHtml = `<div class="chips" style="margin-top:6px">${
+          freeTr.map(function(x){ return `<button class="chip" data-att="${d.uid}|${x.uid}">${Game.truck(x.tid).name} №${x.uid}</button>`; }).join('') || '<span class="small muted">Свободных машин нет</span>'
+        } <button class="chip" data-attoff="1">Отмена</button></div>`;
+      } else {
+        attachHtml = `<button class="btn small secondary" data-attsel="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>${dTruck ? '🔄 Сменить машину' : '🚚 Закрепить'}</button>${dTruck ? `<button class="btn small secondary" data-detdrv="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>🔓</button>` : ''}`;
+      }
       return `
         <div class="list-item">
           <div class="li-ico">👨‍✈️</div>
           <div class="li-main">
             <div class="li-title">${Game.esc(d.name)}</div>
             <div class="li-sub">водитель · скорость ${d.skills.speed} · аккуратность ${d.skills.care} · удача ${d.skills.luck} · ${d.share}% с рейса</div>
-            <div style="margin-top:4px">${driverStatus(d)}</div>
+            <div class="li-sub">🚚 ${dTruck ? Game.truck(dTruck.tid).name + ' №' + dTruck.uid : 'без машины — рейсов не берёт'} · усталость ${Math.round(d.fatigue || 0)}%</div>
+            <div style="margin-top:4px">${driverStatus(d)} <button class="btn small secondary" data-restdrv="${d.uid}" ${canRest ? '' : 'disabled'}>😴 Отдых</button></div>
+            <div style="margin-top:6px">${attachHtml}</div>
           </div>
           <button class="btn small danger" data-firedrv="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>✕</button>
         </div>`;
@@ -241,6 +256,46 @@ Game.screens.office = {
     root.querySelectorAll('[data-firedrv]').forEach(function(b){
       b.onclick = function(){
         var r = E.fire(+b.getAttribute('data-firedrv'));
+        if (r.ok) { Game.haptic('tap'); Game.toast(r.msg); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('office', true);
+      };
+    });
+    root.querySelectorAll('[data-restdrv]').forEach(function(b){
+      b.onclick = function(){
+        var r = E.restDriver(+b.getAttribute('data-restdrv'));
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('office', true);
+      };
+    });
+    root.querySelectorAll('[data-attsel]').forEach(function(b){
+      b.onclick = function(){
+        Game.haptic('tap');
+        var uid = +b.getAttribute('data-attsel');
+        Game.ui.attachDrvFor = Game.ui.attachDrvFor === uid ? null : uid;
+        Game.navigate('office', true);
+      };
+    });
+    root.querySelectorAll('[data-attoff]').forEach(function(b){
+      b.onclick = function(){
+        Game.ui.attachDrvFor = null;
+        Game.navigate('office', true);
+      };
+    });
+    root.querySelectorAll('[data-att]').forEach(function(b){
+      b.onclick = function(){
+        var p = b.getAttribute('data-att').split('|');
+        var r = E.attachDriver(+p[0], +p[1]);
+        Game.ui.attachDrvFor = null;
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('office', true);
+      };
+    });
+    root.querySelectorAll('[data-detdrv]').forEach(function(b){
+      b.onclick = function(){
+        var r = E.detachDriver(+b.getAttribute('data-detdrv'));
         if (r.ok) { Game.haptic('tap'); Game.toast(r.msg); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('office', true);

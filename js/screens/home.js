@@ -5,7 +5,7 @@ Game.screens.home = {
   render: function(root){
     var s = Game.state;
     var active = s.trips.filter(function(t){ return t.status === 'active'; });
-    var rested = s.drivers.filter(function(d){ return d.restUntil <= Date.now() && !Game.economy.driverBusy(d.uid); }).length;
+    var rested = s.drivers.filter(function(d){ return d.restUntil <= Date.now() && (d.fatigue || 0) < 100 && !Game.economy.driverBusy(d.uid); }).length;
     var boostLeft = (s.stars && s.stars.boostUntil > Date.now()) ? s.stars.boostUntil - Date.now() : 0;
     var di = Game.economy.dailyInfo ? Game.economy.dailyInfo() : { claimed: true, streak: 0, nextStreak: 1, reward: 0 };
     var diHtml = di.claimed

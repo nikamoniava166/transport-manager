@@ -19,7 +19,7 @@
       ],
       trailers: [],
       drivers: [
-        { uid: 102, name: 'Иван Петров', skills: { speed: 3, care: 4, luck: 3 }, share: 20, restUntil: 0 }
+        { uid: 102, name: 'Иван Петров', skills: { speed: 3, care: 4, luck: 3 }, share: 20, restUntil: 0, fatigue: 0, truckUid: 101 }
       ],
       staff: [],
       staffMarket: { list: [], refreshAt: 0 },
@@ -81,6 +81,12 @@
     out.trucks.forEach(function(t){ if (t.km == null) t.km = 0; if (t.tires == null) t.tires = 0; });
     out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
     out.drivers  = Array.isArray(out.drivers)  ? out.drivers  : d.drivers;
+    // усталость (шаг «Водители») — у старых водителей нулевая; закрепляем за машинами один к одному
+    var freeTrucks = out.trucks.filter(function(t){ return !out.drivers.some(function(d){ return d.truckUid === t.uid; }); });
+    out.drivers.forEach(function(d){
+      if (d.fatigue == null) d.fatigue = 0;
+      if (d.truckUid == null) { var ft = freeTrucks.shift(); if (ft) d.truckUid = ft.uid; }
+    });
     out.trips    = Array.isArray(out.trips)    ? out.trips    : [];
     // старые рейсы не хранили требования груза и id прицепа — восстанавливаем их
     out.trips.forEach(function(t){
