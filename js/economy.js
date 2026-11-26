@@ -531,6 +531,54 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
   // ---------- рейсы ----------
 
+  // Общая сборка рейса для биржи и контрактов: топливо и аванс списываются здесь же
+  E.buildTrip = function(orderLike, tr, eff, dr, urgent, logPrefix, contractUid){
+    var s = Game.state;
+    var fuel = E.fuelCost(orderLike.km, eff.cons, eff.elec);
+    var advance = Math.round(orderLike.pay * dr.share / 100);
+    if (s.money < fuel + advance) return { ok: false, msg: 'Не хватает на топливо и аванс: ' + Game.fmt.money(fuel + advance) };
+    s.money -= fuel + advance;
+    s.stats.spent += fuel + advance;
+    var pfx = logPrefix ? logPrefix + ' · ' : '';
+    E.logOp('out', fuel, pfx + 'Топливо: ' + Game.city(orderLike.from).name + ' → ' + Game.city(orderLike.to).name);
+    E.logOp('out', advance, pfx + 'Аванс водителю: ' + dr.name);
+
+    var events = E.rollEvents(tr, eff, dr);
+    var minutes = E.tripMinutes(orderLike.km, urgent, eff.speed, dr.skills.speed);
+    var duration = minutes * 60000;
+    var extraTime = 0, extraPay = 0, fines = 0, brk = false;
+    events.forEach(function(ev){
+      var d = EVDEF[ev.type];
+      if (d.time) extraTime += d.time;
+      if (d.pay) extraPay += Math.round(orderLike.pay * d.pay);
+      if (d.fine) { var f = Game.rndInt(d.fine[0], d.fine[1]); ev.fine = f; fines += f; }
+      if (ev.type === 'breakdown') { brk = true; extraTime += 0.3; }
+    });
+    duration = Math.round(duration * (1 + extraTime));
+
+    var trip = {
+      uid: Game.uid(),
+      status: 'active',
+      contractUid: contractUid || null,
+      order: {
+        cargoId: orderLike.cargoId, from: orderLike.from, to: orderLike.to,
+        km: orderLike.km, weight: orderLike.weight, pay: orderLike.pay, urgent: urgent,
+        flags: (orderLike.flags || []).slice()
+      },
+      truckUid: tr.uid, driverUid: dr.uid,
+      trailerUid: eff.trailer ? eff.trailer.uid : null,
+      startedAt: Date.now(),
+      endAt: Date.now() + duration,
+      events: events.map(function(ev){
+        return { type: ev.type, at: Math.round(ev.atFrac * duration), fine: ev.fine || 0, seen: false };
+      }),
+      payFinal: Math.max(0, orderLike.pay + extraPay - fines),
+      fuel: fuel, advance: advance, brk: brk
+    };
+    s.trips.push(trip);
+    return { ok: true, trip: trip };
+  };
+
   E.dispatch = function(orderUid, truckUid, driverUid){
     var s = Game.state;
     var order = null;
@@ -548,49 +596,108 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (eff.cap < order.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (order.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
     if (missing.length) return { ok: false, msg: Game.flagRequirement(missing[0]) };
-    var fuel = E.fuelCost(order.km, eff.cons, eff.elec);
-    var advance = Math.round(order.pay * dr.share / 100);
-    if (s.money < fuel + advance) return { ok: false, msg: 'Не хватает на топливо и аванс: ' + Game.fmt.money(fuel + advance) };
-    s.money -= fuel + advance;
-    s.stats.spent += fuel + advance;
-    E.logOp('out', fuel, 'Топливо: ' + Game.city(order.from).name + ' → ' + Game.city(order.to).name);
-    E.logOp('out', advance, 'Аванс водителю: ' + dr.name);
-
-    var events = E.rollEvents(tr, eff, dr);
-    var minutes = E.tripMinutes(order.km, order.urgent, eff.speed, dr.skills.speed);
-    var duration = minutes * 60000;
-    var extraTime = 0, extraPay = 0, fines = 0, brk = false;
-    events.forEach(function(ev){
-      var d = EVDEF[ev.type];
-      if (d.time) extraTime += d.time;
-      if (d.pay) extraPay += Math.round(order.pay * d.pay);
-      if (d.fine) { var f = Game.rndInt(d.fine[0], d.fine[1]); ev.fine = f; fines += f; }
-      if (ev.type === 'breakdown') { brk = true; extraTime += 0.3; }
-    });
-    duration = Math.round(duration * (1 + extraTime));
-
-    var trip = {
-      uid: Game.uid(),
-      status: 'active',
-      order: {
-        cargoId: order.cargoId, from: order.from, to: order.to,
-        km: order.km, weight: order.weight, pay: order.pay, urgent: order.urgent,
-        flags: (order.flags || []).slice()
-      },
-      truckUid: truckUid, driverUid: driverUid,
-      trailerUid: eff.trailer ? eff.trailer.uid : null,
-      startedAt: Date.now(),
-      endAt: Date.now() + duration,
-      events: events.map(function(ev){
-        return { type: ev.type, at: Math.round(ev.atFrac * duration), fine: ev.fine || 0, seen: false };
-      }),
-      payFinal: Math.max(0, order.pay + extraPay - fines),
-      fuel: fuel, advance: advance, brk: brk
-    };
-    s.trips.push(trip);
+    var r = E.buildTrip(order, tr, eff, dr, order.urgent);
+    if (!r.ok) return r;
     s.market.orders = s.market.orders.filter(function(o){ return o.uid !== orderUid; });
     Game.save();
-    return { ok: true, trip: trip };
+    return r;
+  };
+
+  // ---------- контракты: постоянные клиенты ----------
+
+  // Оффер контракта: серия рейсов по одному маршруту и грузу, срок на всю серию
+  E.generateContractOffer = function(){
+    var s = Game.state;
+    var lvl = Game.levelInfo(s.xp).level;
+    var cities = Game.data.cities.filter(function(c){ return c.lvl <= lvl; });
+    if (cities.length < 2 || !(Game.data.clients || []).length) return null;
+    var fleetCap = 0;
+    var flaggedCap = {};
+    s.trucks.forEach(function(tr){
+      var e = E.effTruck(tr);
+      if (e.cap > fleetCap) fleetCap = e.cap;
+      e.flags.forEach(function(f){ if (!flaggedCap[f] || e.cap > flaggedCap[f]) flaggedCap[f] = e.cap; });
+    });
+    var cargos = Game.data.cargo.filter(function(c){
+      if (c.lvl > lvl || c.min > fleetCap) return false;
+      var fl = c.flags || [];
+      for (var i = 0; i < fl.length; i++) if (!flaggedCap[fl[i]] || flaggedCap[fl[i]] < c.min) return false;
+      return true;
+    });
+    if (!cargos.length) return null;
+    var cargo = Game.pick(cargos);
+    var maxW = Math.min(cargo.max, fleetCap);
+    (cargo.flags || []).forEach(function(f){ if (flaggedCap[f] < maxW) maxW = flaggedCap[f]; });
+    var weight = Math.round(Game.rnd(cargo.min, maxW) * 10) / 10;
+    var a = Game.pick(cities), b;
+    do { b = Game.pick(cities); } while (b.id === a.id);
+    var km = Game.dist(a.id, b.id);
+    var trips = Game.rndInt(3, 5);
+    var pay = E.orderPay(km, weight, cargo.mult, false);
+    var series = pay * trips;
+    return {
+      uid: Game.uid(),
+      client: Game.pick(Game.data.clients),
+      cargoId: cargo.id, from: a.id, to: b.id, km: km, weight: weight,
+      flags: (cargo.flags || []).slice(),
+      trips: trips, done: 0,
+      pay: pay,
+      bonus: Math.max(500, Math.round(series * 0.3 / 100) * 100),   // +30 % за полную серию
+      penalty: Math.max(500, Math.round(series * 0.2 / 100) * 100), // штраф за провал срока
+      minPerTrip: Math.max(Game.data.minTripMin, Math.round(km / Game.data.kmPerMin)),
+      deadline: Date.now() + trips * Game.rndInt(30, 45) * 60000,
+      expiresAt: Date.now() + Game.rndInt(10, 30) * 60000
+    };
+  };
+
+  // Обновляем офферы контрактов (вызывается вместе с биржей)
+  E.refreshContracts = function(){
+    var s = Game.state;
+    if (!s.contracts) s.contracts = { offers: [], active: null };
+    var now = Date.now();
+    s.contracts.offers = (s.contracts.offers || []).filter(function(c){ return c.expiresAt > now; });
+    if (s.contracts.active) { s.contracts.offers = []; return; }
+    var guard = 0;
+    while (s.contracts.offers.length < 2 && guard++ < 8) {
+      var c = E.generateContractOffer();
+      if (!c) break;
+      s.contracts.offers.push(c);
+    }
+  };
+
+  // Взять контракт — это сразу первый рейс по нему
+  E.dispatchContract = function(cUid, truckUid, driverUid){
+    var s = Game.state;
+    if (!s.contracts) s.contracts = { offers: [], active: null };
+    var c = null, fromOffer = false;
+    (s.contracts.offers || []).forEach(function(x){ if (x.uid === cUid) { c = x; fromOffer = true; } });
+    if (!c && s.contracts.active && s.contracts.active.uid === cUid) c = s.contracts.active;
+    if (!c) return { ok: false, msg: 'Контракт не найден' };
+    if (fromOffer && s.contracts.active) return { ok: false, msg: 'У вас уже есть активный контракт' };
+    var now = Date.now();
+    if (now > c.deadline) return { ok: false, msg: 'Срок контракта истёк' };
+    var tr = null, dr = null;
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    s.drivers.forEach(function(x){ if (x.uid === driverUid) dr = x; });
+    if (!tr || !dr) return { ok: false, msg: 'Выберите машину и водителя' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина уже в рейсе' };
+    if ((tr.tires || 0) >= Game.data.tireMaxWear) return { ok: false, msg: 'Шины изношены — замените комплект в автопарке' };
+    if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель уже в рейсе' };
+    if (dr.restUntil > now) return { ok: false, msg: 'Водитель отдыхает' };
+    var eff = E.effTruck(tr);
+    if (eff.cap < c.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
+    var missing = (c.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
+    if (missing.length) return { ok: false, msg: Game.flagRequirement(missing[0]) };
+    var orderLike = { cargoId: c.cargoId, from: c.from, to: c.to, km: c.km, weight: c.weight, pay: c.pay, flags: c.flags };
+    var r = E.buildTrip(orderLike, tr, eff, dr, false, 'Контракт', c.uid);
+    if (!r.ok) return r;
+    if (fromOffer) {
+      c.done = 0;
+      s.contracts.active = c;
+      s.contracts.offers = s.contracts.offers.filter(function(x){ return x.uid !== cUid; });
+    }
+    Game.save();
+    return r;
   };
 
   E.xpGain = function(order){
@@ -659,6 +766,23 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var d2 = null;
     s.drivers.forEach(function(x){ if (x.uid === t.driverUid) d2 = x; });
     if (d2) d2.restUntil = Date.now() + Math.round(60000 * (1 + o.km / 1000 * 0.4));
+    // контракт: рейс двигает серию; полная серия — бонус и закрытие контракта
+    if (t.contractUid && s.contracts && s.contracts.active && s.contracts.active.uid === t.contractUid) {
+      var cc = s.contracts.active;
+      cc.done = (cc.done || 0) + 1;
+      if (cc.done >= cc.trips) {
+        s.money += cc.bonus;
+        s.stats.earned += cc.bonus;
+        E.logOp('in', cc.bonus, 'Контракт выполнен: ' + cc.client);
+        s.contracts.active = null;
+        s.contracts.doneCount = (s.contracts.doneCount || 0) + 1;
+        if (Game.ui.ready) {
+          Game.toast('🏆 Контракт «' + cc.client + '» выполнен · бонус ' + Game.fmt.money(cc.bonus), 'ok');
+          Game.haptic('level');
+          if (Game.confetti) Game.confetti();
+        }
+      }
+    }
     // опыт
     E.addXp(E.xpGain(o));
     t.net = payout - t.fuel - t.advance - charged;
@@ -678,6 +802,23 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         earned += t.payFinal;
       }
     });
+    // контракты: провал по сроку
+    var act = s.contracts && s.contracts.active;
+    if (act && now > act.deadline) {
+      var pen = Math.min(s.money, act.penalty);
+      if (pen > 0) {
+        s.money -= pen;
+        s.stats.spent += pen;
+        E.logOp('out', pen, 'Штраф по контракту: ' + act.client);
+      }
+      s.contracts.active = null;
+      s.contracts.failed = (s.contracts.failed || 0) + 1;
+      if (!silent && Game.ui.ready) {
+        Game.toast('❌ Контракт «' + act.client + '» провален' + (pen > 0 ? ' · штраф ' + Game.fmt.money(pen) : ''), 'err');
+        Game.haptic('err');
+      }
+      Game.save();
+    }
     // события активных рейсов: отметить случившиеся
     var lastEv = null;
     s.trips.forEach(function(t){
@@ -690,6 +831,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       });
     });
     E.refreshMarket();
+    E.refreshContracts();
     E.refreshSalon();
     E.autoMaintain(now);
     // историю держим компактной — последние 20

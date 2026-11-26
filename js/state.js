@@ -25,6 +25,7 @@
       staffMarket: { list: [], refreshAt: 0 },
       warehouse: { parts: 2, tires: 4 },
       company: { name: '', named: false },
+      contracts: { offers: [], active: null },
       oplog: [],
       lastMaintAt: Date.now(),
       trips: [],
@@ -53,6 +54,9 @@
     out.salon.list    = Array.isArray(out.salon.list) ? out.salon.list : [];
     out.warehouse     = Object.assign({}, d.warehouse,      (st && st.warehouse)     || {});
     out.company       = Object.assign({}, d.company,        (st && st.company)       || {});
+    out.contracts     = Object.assign({}, d.contracts,      (st && st.contracts)     || {});
+    if (!Array.isArray(out.contracts.offers)) out.contracts.offers = [];
+    if (!(out.contracts.active && out.contracts.active.uid)) out.contracts.active = null;
     out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
     out.achievements = (st && st.achievements && typeof st.achievements === 'object' && !Array.isArray(st.achievements)) ? st.achievements : {};
     out.finance      = (st && st.finance && typeof st.finance === 'object' && !Array.isArray(st.finance)) ? st.finance : {};

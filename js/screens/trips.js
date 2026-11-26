@@ -69,13 +69,34 @@
       </div>`;
   }
 
+  function contractCard(c){
+    var cargo = Game.data.cargo.find(function(x){ return x.id === c.cargoId; });
+    var dots = '';
+    for (var i = 0; i < c.trips; i++) dots += (i < c.done ? '✅' : '⬜');
+    var left = Math.max(0, c.deadline - Date.now());
+    return `
+      <div class="card">
+        <div class="card-title">📄 Контракт: ${Game.esc(c.client)}</div>
+        <div class="li-sub">📦 ${cargo.name} ${Game.fmt.ton(c.weight)} · 📍 ${Game.city(c.from).name} → ${Game.city(c.to).name} · ${c.km} км · серия ${c.trips} ${Game.plural(c.trips, 'рейс', 'рейса', 'рейсов')}</div>
+        <div class="li-title" style="margin-top:6px;font-size:15px;letter-spacing:2px">${dots}</div>
+        <div style="margin-top:8px">
+          <span class="tag ${left < 10 * 60000 ? 'danger' : ''}">⏱ осталось ${Game.fmt.dur(left)}</span>
+          <span class="tag ok">🏆 бонус ${Game.fmt.money(c.bonus)}</span>
+          <span class="tag danger">⚠ штраф ${Game.fmt.money(c.penalty)}</span>
+        </div>
+        <div class="li-sub" style="margin-top:6px">Рейсы по контракту — на «Бирже»</div>
+      </div>`;
+  }
+
   Game.screens.trips = {
     render: function(root){
       var s = Game.state;
       var active = s.trips.filter(function(t){ return t.status === 'active'; });
       var hist = s.trips.filter(function(t){ return t.status === 'done'; }).slice(-10).reverse();
-      Game.ui.tripsSig = active.map(function(t){ return t.uid; }).join(',');
+      var con = s.contracts && s.contracts.active;
+      Game.ui.tripsSig = (con ? 'c' + con.uid + ':' + con.done : '') + '|' + active.map(function(t){ return t.uid; }).join(',');
       root.innerHTML = `
+        ${con ? contractCard(con) : ''}
         <div class="card">
           <div class="card-title">Активные рейсы — ${active.length}</div>
           ${active.length ? active.map(activeCard).join('') : '<div class="empty"><div class="big">🛣️</div>Сейчас все машины стоят.<br><span class="small">Возьмите заказ на бирже</span></div>'}
@@ -95,7 +116,8 @@
         Game.state.trips.forEach(function(x){ if (x.uid === uid && x.status === 'active') t = x; });
         if (t) el.innerHTML = eventChips(t);
       });
-      var sig = Game.state.trips.filter(function(t){ return t.status === 'active'; }).map(function(t){ return t.uid; }).join(',');
+      var con2 = Game.state.contracts && Game.state.contracts.active;
+      var sig = (con2 ? 'c' + con2.uid + ':' + con2.done : '') + '|' + Game.state.trips.filter(function(t){ return t.status === 'active'; }).map(function(t){ return t.uid; }).join(',');
       if (sig !== Game.ui.tripsSig) Game.navigate('trips', true);
     }
   };

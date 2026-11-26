@@ -48,10 +48,6 @@ Game.screens.home = {
           <div class="card-title">Водители готовы</div>
           <div class="stat-num">${rested} / ${s.drivers.length}</div>
         </div>
-        <div class="card">
-          <div class="stat-num" style="color:var(--ok)">${Game.fmt.money(s.money)}</div>
-          <div class="stat-lbl">на счету${boostLeft ? ' · ⭐ ×2 ещё ' + Game.fmt.dur(boostLeft) : ''}</div>
-        </div>
       </div>
 
       <div class="card">

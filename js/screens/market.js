@@ -6,8 +6,10 @@ Game.screens.market = {
     var s = Game.state;
     var E = Game.economy;
     E.refreshMarket();
+    E.refreshContracts();
     var now = Date.now();
-    Game.ui.marketSig = s.market.orders.map(function(o){ return o.uid; }).join(',');
+    var con0 = s.contracts || { offers: [], active: null };
+    Game.ui.marketSig = s.market.orders.map(function(o){ return o.uid; }).join(',') + '|' + (con0.active ? 'a' + con0.active.uid + ':' + con0.active.done : 'o' + con0.offers.map(function(c){ return c.uid; }).join(','));
 
     function orderCard(o){
       var cargo = Game.data.cargo.find(function(c){ return c.id === o.cargoId; });
@@ -27,7 +29,7 @@ Game.screens.market = {
       });
       var noFitLabel = (flags.length && !anyFlagged) ? Game.flagRequirement(flags[0]) : 'Нет свободной машины под груз';
       var panel = '';
-      if (Game.ui.dispatchOrderUid === o.uid) panel = dispatchPanel(o);
+      if (Game.ui.dispatchOrderUid === String(o.uid)) panel = dispatchPanel(o, false);
       return `
         <div class="card">
           <div class="li-title">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочный ×1,4</span>' : ''}</div>
@@ -41,7 +43,7 @@ Game.screens.market = {
         </div>`;
     }
 
-    function dispatchPanel(o){
+    function dispatchPanel(o, isContract){
       var flags = o.flags || [];
       function fits(tr){
         var e = E.effTruck(tr);
@@ -111,24 +113,88 @@ Game.screens.market = {
             💰 По доставке: <b style="color:var(--ok)">${Game.fmt.money(o.pay)}</b>
           </div>
           <div class="row" style="margin-top:10px">
-            <button class="btn" data-go="${o.uid}" ${ok ? '' : 'disabled'}>${enough ? '🚚 В рейс!' : 'Не хватает денег'}</button>
+            <button class="btn" data-go="${isContract ? 'c' : ''}${o.uid}" ${ok ? '' : 'disabled'}>${enough ? (isContract ? '🚚 Рейс по контракту' : '🚚 В рейс!') : 'Не хватает денег'}</button>
             <button class="btn secondary" data-cancel="1">Отмена</button>
           </div>
         </div>`;
     }
+
+    // контракт-оффер: серия рейсов с бонусом за полную серию и штрафом за срок
+    function contractCard(c){
+      var cargo = Game.data.cargo.find(function(x){ return x.id === c.cargoId; });
+      var from = Game.city(c.from).name, to = Game.city(c.to).name;
+      var flags = c.flags || [];
+      var flagTags = flags.map(function(f){ return '<span class="tag warn">' + Game.flagRequirement(f) + '</span>'; }).join('');
+      function fits(tr){
+        if (E.isBusy(tr.uid)) return false;
+        var e = E.effTruck(tr);
+        return e.cap >= c.weight && flags.every(function(f){ return e.flags.indexOf(f) >= 0; });
+      }
+      var can = s.trucks.some(fits);
+      var panel = Game.ui.dispatchOrderUid === 'c' + c.uid ? dispatchPanel(c, true) : '';
+      return `
+        <div class="card">
+          <div class="li-title">📄 ${Game.esc(c.client)} · серия ${c.trips} ${Game.plural(c.trips, 'рейс', 'рейса', 'рейсов')}</div>
+          <div class="li-sub" style="margin-top:4px">📦 ${cargo.name} ${Game.fmt.ton(c.weight)} · 📍 ${from} → ${to} · ${c.km} км · ≈${c.minPerTrip} мин/рейс</div>
+          <div class="li-sub" style="margin-top:2px">⏳ на серию: ${Game.fmt.dur(c.deadline - now)} · предложение висит ${Math.max(1, Math.round((c.expiresAt - now) / 60000))} мин</div>
+          <div style="margin-top:8px">
+            <span class="tag accent">💰 ${Game.fmt.money(c.pay)}/рейс</span>
+            <span class="tag ok">🏆 бонус ${Game.fmt.money(c.bonus)}</span>
+            <span class="tag danger">⚠ штраф ${Game.fmt.money(c.penalty)}</span>
+            ${flagTags}
+          </div>
+          ${panel || `<button class="btn" data-open="c${c.uid}" ${can ? '' : 'disabled'}>📝 Взять контракт</button>`}
+        </div>`;
+    }
+
+    // активный контракт: прогресс серии и кнопка очередного рейса
+    function activeContractCard(c){
+      var cargo = Game.data.cargo.find(function(x){ return x.id === c.cargoId; });
+      var left = Math.max(0, c.deadline - Date.now());
+      var dots = '';
+      for (var i = 0; i < c.trips; i++) dots += (i < c.done ? '✅' : '⬜');
+      var flags = c.flags || [];
+      function fits(tr){
+        if (E.isBusy(tr.uid)) return false;
+        var e = E.effTruck(tr);
+        return e.cap >= c.weight && flags.every(function(f){ return e.flags.indexOf(f) >= 0; });
+      }
+      var can = c.done < c.trips && s.trucks.some(fits);
+      var panel = Game.ui.dispatchOrderUid === 'c' + c.uid ? dispatchPanel(c, true) : '';
+      return `
+        <div class="card">
+          <div class="card-title">📄 Контракт: ${Game.esc(c.client)}</div>
+          <div class="li-sub">📦 ${cargo.name} · 📍 ${Game.city(c.from).name} → ${Game.city(c.to).name} · ${c.km} км</div>
+          <div class="li-title" style="margin-top:6px;font-size:15px;letter-spacing:2px">${dots}</div>
+          <div style="margin-top:8px">
+            <span class="tag ${left < 10 * 60000 ? 'danger' : ''}">⏱ осталось ${Game.fmt.dur(left)}</span>
+            <span class="tag ok">🏆 бонус ${Game.fmt.money(c.bonus)}</span>
+            <span class="tag danger">⚠ штраф ${Game.fmt.money(c.penalty)}</span>
+          </div>
+          ${panel || `<button class="btn" data-open="c${c.uid}" ${can ? '' : 'disabled'}>${c.done < c.trips ? '🚚 Рейс по контракту (' + c.done + '/' + c.trips + ')' : 'Серия выполнена'}</button>`}
+        </div>`;
+    }
+
+    var con = s.contracts || { offers: [], active: null };
+    var contractsHtml = con.active
+      ? activeContractCard(con.active)
+      : (con.offers.length
+        ? `<div class="card placeholder-card center"><b>📄 Контракты — постоянные клиенты</b><div class="small muted" style="margin-top:4px">Выполните всю серию — бонус · провалите срок — штраф</div></div>${con.offers.map(contractCard).join('')}`
+        : '');
 
     root.innerHTML = `
       <div class="card placeholder-card center">
         <b>Биржа заказов</b>
         <div class="small muted" style="margin-top:4px">Заказов: ${s.market.orders.length} / ${E.marketSlots()} · список обновляется сам</div>
       </div>
+      ${contractsHtml}
       ${s.market.orders.map(orderCard).join('') || '<div class="card"><div class="empty">Биржа пуста — новые заказы появятся в течение минуты</div></div>'}
     `;
 
     root.querySelectorAll('[data-open]').forEach(function(b){
       b.onclick = function(){
         Game.haptic('tap');
-        Game.ui.dispatchOrderUid = +b.getAttribute('data-open');
+        Game.ui.dispatchOrderUid = b.getAttribute('data-open');
         Game.ui.mktSel = null;
         Game.navigate('market', true);
       };
@@ -155,9 +221,11 @@ Game.screens.market = {
     });
     root.querySelectorAll('[data-go]').forEach(function(b){
       b.onclick = function(){
-        var uid = +b.getAttribute('data-go');
+        var v = b.getAttribute('data-go');
+        var isC = v.charAt(0) === 'c';
+        var uid = isC ? +v.slice(1) : +v;
         var sel = Game.ui.mktSel || {};
-        var r = E.dispatch(uid, sel.truckUid || 0, sel.driverUid || 0);
+        var r = isC ? E.dispatchContract(uid, sel.truckUid || 0, sel.driverUid || 0) : E.dispatch(uid, sel.truckUid || 0, sel.driverUid || 0);
         if (r.ok) {
           Game.haptic('ok');
           Game.ui.dispatchOrderUid = null;
@@ -165,7 +233,7 @@ Game.screens.market = {
           var cargo = Game.data.cargo.find(function(c){ return c.id === o.cargoId; });
           var tr = null;
           s.trucks.forEach(function(x){ if (x.uid === t.truckUid) tr = x; });
-          Game.toast('🚚 ' + (tr ? Game.truck(tr.tid).name : 'Машина') + ' повезла ' + cargo.name.toLowerCase() + ': ' + Game.city(o.from).name + ' → ' + Game.city(o.to).name, 'ok');
+          Game.toast((isC ? '📄 Контракт: ' : '🚚 ') + (tr ? Game.truck(tr.tid).name : 'Машина') + ' повезла ' + cargo.name.toLowerCase() + ': ' + Game.city(o.from).name + ' → ' + Game.city(o.to).name, 'ok');
         } else {
           Game.haptic('err');
           Game.toast(r.msg, 'err');
@@ -178,7 +246,9 @@ Game.screens.market = {
   onTick: function(){
     // пока открыт выбор машины/водителя — список не перерисовываем
     if (Game.ui.dispatchOrderUid != null) return;
-    var sig = Game.state.market.orders.map(function(o){ return o.uid; }).join(',');
+    var con = Game.state.contracts || { offers: [], active: null };
+    var csig = con.active ? 'a' + con.active.uid + ':' + con.active.done : 'o' + (con.offers || []).map(function(c){ return c.uid; }).join(',');
+    var sig = Game.state.market.orders.map(function(o){ return o.uid; }).join(',') + '|' + csig;
     if (sig !== Game.ui.marketSig) Game.navigate('market', true);
   }
 };
