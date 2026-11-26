@@ -42,7 +42,7 @@ Game.screens.home = {
 
     root.innerHTML = `
       <div class="card">
-        <div class="hero-title">🚚 «${Game.esc(Game.playerName)} Транс»</div>
+        <div class="hero-title">🚚 ${Game.esc(Game.companyDisplayName ? Game.companyDisplayName() : Game.playerName + ' Транс')}</div>
         <div class="hero-sub">Уровень ${li.level} · опыт ${li.cur} / ${li.need} до следующего${boostLeft ? ' · ⭐ доход ×2 ещё ' + Game.fmt.dur(boostLeft) : ''}</div>
         <div class="progress" style="margin-top:10px"><i style="width:${xpPct}%"></i></div>
       </div>

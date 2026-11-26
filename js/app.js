@@ -148,6 +148,14 @@ Game.init = function(){
   Game.navigate('home');
   Game.ui.ready = true;
 
+  // Компания: клик по табличке в шапке открывает карточку;
+  // при первом запуске (название ещё не задано) сразу предлагаем назвать компанию
+  var brand = document.getElementById('brand');
+  if (brand) brand.onclick = function(){ Game.haptic('tap'); Game.showCompany('view'); };
+  if (!Game.state.company || !Game.state.company.named) {
+    setTimeout(function(){ Game.showCompany('name'); }, 600);
+  }
+
   setInterval(Game.tick, 1000);
   setInterval(Game.save, 15000);
   document.addEventListener('visibilitychange', function(){

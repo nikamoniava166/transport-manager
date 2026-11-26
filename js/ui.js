@@ -150,6 +150,7 @@ Game.applyTheme = function(){
 };
 
 Game.updateHUD = function(){
+  Game.updateBrand();
   var m = document.getElementById('hud-money');
   var l = document.getElementById('hud-level');
   if (!Game.state) return;
@@ -212,4 +213,98 @@ Game.updateTripWidgets = function(){
       el.style.width = p.toFixed(1) + '%';
     }
   });
+};
+
+// ---------- Компания: название в шапке и карточка компании ----------
+
+// Имя компании: заданное игроком или синтез «Имя Транс» (как было на «Главной»)
+Game.companyDisplayName = function(){
+  var c = (Game.state && Game.state.company) || {};
+  return (c.name && c.name.trim()) || (Game.playerName + ' Транс');
+};
+
+Game.updateBrand = function(){
+  var b = document.getElementById('brand');
+  if (!b) return;
+  var c = (Game.state && Game.state.company) || {};
+  var name = (c.name && c.name.trim()) || '';
+  b.textContent = name ? '🚚 ' + name : '🚚 Менеджер перевозок';
+  b.classList.toggle('has-name', !!name);
+};
+
+// Модалка поверх экрана: карточка компании (mode 'view') или ввод названия (mode 'name')
+Game.showCompany = function(mode){
+  var old = document.getElementById('company-modal');
+  if (old) old.remove();
+  var s = Game.state;
+  if (!s.company) s.company = { name: '', named: false };
+  if (!mode) mode = s.company.named ? 'view' : 'name';
+  var li = Game.levelInfo(s.xp);
+  var xpPct = Math.min(100, Math.round(li.cur / li.need * 100));
+  var st = s.stats || {};
+  var naming = mode === 'name';
+  var el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'company-modal';
+  el.innerHTML = `
+    <div class="modal">
+      <div class="modal-x" data-x="1">✕</div>
+      ${naming
+        ? `<div class="modal-title">🏢 Назовите компанию</div>
+           <div class="li-sub">Название появится слева вверху. Изменить можно в любой момент — клик по названию.</div>
+           <input id="company-input" maxlength="24" placeholder="Например: «Шеф Транс»" value="${Game.esc(s.company.name || '')}" style="margin-top:10px">
+           <div class="row" style="margin-top:10px">
+             <button class="btn" data-save="1">Сохранить</button>
+             ${s.company.named ? '' : '<button class="btn secondary" data-skip="1">Пока без названия</button>'}
+           </div>`
+        : `<div class="modal-title">🏢 ${Game.esc(Game.companyDisplayName())}</div>
+           <div class="wear" style="margin-top:4px">
+             <div class="progress"><i style="width:${xpPct}%;background:var(--accent)"></i></div>
+             <div class="val">Уровень ${li.level} · опыт ${li.cur} / ${li.need} XP</div>
+           </div>
+           <div class="list-item">
+             <div class="li-ico">📦</div>
+             <div class="li-main">
+               <div class="li-title">${st.tripsDone || 0}</div>
+               <div class="li-sub">${Game.plural(st.tripsDone || 0, 'доставленный рейс', 'доставленных рейса', 'доставленных рейсов')}</div>
+             </div>
+           </div>
+           <div class="list-item">
+             <div class="li-ico">🛣️</div>
+             <div class="li-main">
+               <div class="li-title">${Game.fmt.km(st.km || 0)}</div>
+               <div class="li-sub">пройдено по дорогам</div>
+             </div>
+           </div>
+           <button class="btn secondary" data-rename="1" style="margin-top:4px">✏️ Переименовать</button>`}
+    </div>`;
+  document.body.appendChild(el);
+
+  function close(){ el.remove(); }
+  function save(){
+    var input = el.querySelector('#company-input');
+    var name = input ? input.value.replace(/\s+/g, ' ').trim().slice(0, 24) : '';
+    s.company.name = name;
+    s.company.named = true;
+    Game.save();
+    Game.updateBrand();
+    Game.haptic('ok');
+    Game.toast(name ? 'Компания: «' + name + '»' : 'Название сброшено', 'ok');
+    close();
+    // экран мог уже показать имя — перерисовываем текущий
+    if (Game.currentScreen && Game.screens[Game.currentScreen]) Game.navigate(Game.currentScreen, true);
+  }
+  el.addEventListener('click', function(ev){
+    if (ev.target === el || (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-x'))) { Game.haptic('tap'); close(); }
+    if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-skip')) { s.company.named = true; Game.save(); close(); }
+    if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-rename')) { Game.haptic('tap'); Game.showCompany('name'); }
+    if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-save')) save();
+  });
+  el.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && ev.target && ev.target.id === 'company-input') save();
+  });
+  if (naming) {
+    var input = el.querySelector('#company-input');
+    if (input) setTimeout(function(){ input.focus(); }, 60);
+  }
 };
