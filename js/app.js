@@ -77,6 +77,16 @@ Game.tick = function(){
   if (moneyChanged && scr && scr.moneySensitive) Game.navigate(Game.currentScreen, true);
 };
 
+// Вендоренные SVG-иконки: заполняем все [data-ico] сразу при разборе DOM (таб-бар).
+// Если js/icons.js не загрузился — эмодзи-фолбэк из разметки остаётся на месте.
+(function(){
+  var nodes = document.querySelectorAll('[data-ico]');
+  if (!nodes.length || typeof Game.ico !== 'function') return;
+  Array.prototype.forEach.call(nodes, function(el){
+    el.innerHTML = Game.ico(el.getAttribute('data-ico'));
+  });
+})();
+
 Game.init = function(){
   var tg = window.Telegram && window.Telegram.WebApp;
 
@@ -102,11 +112,6 @@ Game.init = function(){
 
   Game.load();
   Game.updateHUD();
-
-  // вендоренные SVG-иконки: заполняем все [data-ico] (таб-бар и статические места)
-  document.querySelectorAll('[data-ico]').forEach(function(el){
-    el.innerHTML = Game.ico(el.getAttribute('data-ico'));
-  });
 
   // Офлайн-прогресс: доводим мир до «сейчас» молча и показываем сводку
   var r = Game.economy.settle(true);
