@@ -70,11 +70,6 @@ Game.haptic = function(kind){
   }
 };
 
-Game.FALLBACK_THEMES = {
-  dark:  { bg:'#17212b', panel:'#232e3c', panel2:'#2c3a4d', text:'#ffffff', muted:'#8fa3b8', accent:'#54a9ff', 'accent-text':'#ffffff', ok:'#4dd07a', warn:'#ffb84d', danger:'#ff6b6b' },
-  light: { bg:'#eef2f6', panel:'#ffffff', panel2:'#e6ebf1', text:'#17212b', muted:'#7d8fa4', accent:'#3390ec', 'accent-text':'#ffffff', ok:'#31a24c', warn:'#e08600', danger:'#e03131' }
-};
-
 // hex → rgb / rgba / смешение — для производных цветов фона и вкладок
 function hexRgb(h){
   h = String(h || '').replace('#', '');
@@ -95,56 +90,31 @@ function blendHex(h1, h2, t){
 }
 
 Game.applyTheme = function(){
-  var tg = window.Telegram && window.Telegram.WebApp;
-  var p = (tg && tg.themeParams && tg.themeParams.bg_color) ? tg.themeParams : null;
-  var dark;
-  if (p) dark = tg.colorScheme !== 'light';
-  else if (window.matchMedia) dark = !window.matchMedia('(prefers-color-scheme: light)').matches;
-  else dark = true;
-  var fb = dark ? Game.FALLBACK_THEMES.dark : Game.FALLBACK_THEMES.light;
-  var v = fb;
-  if (p) {
-    if (dark) {
-      v = {
-        bg: p.bg_color || fb.bg,
-        panel: p.secondary_bg_color || p.bg_color || fb.panel,
-        panel2: p.secondary_bg_color || fb.panel2,
-        text: p.text_color || fb.text,
-        muted: p.hint_color || fb.muted,
-        accent: p.button_color || p.link_color || fb.accent,
-        'accent-text': p.button_text_color || fb['accent-text'],
-        ok: fb.ok, warn: fb.warn, danger: fb.danger
-      };
-    } else {
-      // Светлая тема Telegram: серый фон, белые карточки
-      v = {
-        bg: p.secondary_bg_color || fb.bg,
-        panel: p.bg_color || '#ffffff',
-        panel2: p.secondary_bg_color || fb.panel2,
-        text: p.text_color || fb.text,
-        muted: p.hint_color || fb.muted,
-        accent: p.button_color || p.link_color || fb.accent,
-        'accent-text': p.button_text_color || fb['accent-text'],
-        ok: fb.ok, warn: fb.warn, danger: fb.danger
-      };
-    }
-  }
-  // производные: градиент фона, разметка, «стекло» панелей — из фактических цветов темы
-  var deep = dark ? '#0c141c' : '#dbe2ea';
-  v['bg2'] = blendHex(v.bg, deep, dark ? 0.45 : 0.55);
-  v['glow'] = withAlpha(v.accent, dark ? 0.10 : 0.08);
-  v['road'] = withAlpha(v.text, dark ? 0.05 : 0.055);
-  v['glass'] = withAlpha(v.panel, dark ? 0.94 : 0.90);
-  v['tab-active'] = withAlpha(v.accent, dark ? 0.16 : 0.14);
-  v['tab-shadow'] = dark ? '0 14px 34px rgba(0,0,0,.5)' : '0 12px 28px rgba(23,33,43,.18)';
+  // Тема ETS2 «ночная кабина»: фиксированная тёмная палитра — асфальт, графит,
+  // янтарный акцент. Игра — тёмная всегда, от темы Telegram не зависит.
+  var v = {
+    bg:'#0f1216', panel:'#191f27', panel2:'#232c37',
+    text:'#ede7db', muted:'#97a0ab',
+    accent:'#f29a1d', 'accent-text':'#17110a',
+    ok:'#7dd64f', warn:'#f5c542', danger:'#e5532f',
+    border:'rgba(255,255,255,.07)'
+  };
+  // производные: асфальтовый градиент, «фары», разметка, приборное стекло, вкладки
+  v['bg2'] = blendHex(v.bg, '#05070a', 0.55);
+  v['glow'] = withAlpha(v.accent, 0.10);
+  v['road'] = withAlpha('#ffffff', 0.055);
+  v['glass'] = withAlpha(v.panel, 0.92);
+  v['tab-active'] = withAlpha(v.accent, 0.18);
+  v['tab-shadow'] = '0 14px 34px rgba(0,0,0,.55)';
 
   var root = document.documentElement;
   Object.keys(v).forEach(function(k){ root.style.setProperty('--' + k, v[k]); });
-  document.body.classList.toggle('is-light', !dark);
+  document.body.classList.remove('is-light');
   try {
+    var tg = window.Telegram && window.Telegram.WebApp;
     if (tg) {
-      if (tg.setHeaderColor && p && p.bg_color) tg.setHeaderColor(p.bg_color);
-      if (tg.setBackgroundColor && p && p.bg_color) tg.setBackgroundColor(p.bg_color);
+      if (tg.setHeaderColor) tg.setHeaderColor(v.bg);
+      if (tg.setBackgroundColor) tg.setBackgroundColor(v.bg);
     }
   } catch (e) {}
 };
