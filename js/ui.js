@@ -242,6 +242,16 @@ Game.showCompany = function(mode){
   var li = Game.levelInfo(s.xp);
   var xpPct = Math.min(100, Math.round(li.cur / li.need * 100));
   var st = s.stats || {};
+  var boostLeft = (s.stars && s.stars.boostUntil > Date.now()) ? s.stars.boostUntil - Date.now() : 0;
+  // динамика доход/расход за 7 дней (переехала с «Офиса»)
+  var chartDays = [], maxV = 1;
+  for (var ci = 6; ci >= 0; ci--) {
+    var cd = new Date(Date.now() - ci * 86400000);
+    var ck = Game.dayKey(cd);
+    var cf = (s.finance || {})[ck] || { in: 0, out: 0 };
+    chartDays.push({ day: cd.getDate(), in: cf.in || 0, out: cf.out || 0 });
+    maxV = Math.max(maxV, cf.in || 0, cf.out || 0);
+  }
   var naming = mode === 'name';
   var el = document.createElement('div');
   el.className = 'overlay';
@@ -262,6 +272,7 @@ Game.showCompany = function(mode){
              <div class="progress"><i style="width:${xpPct}%;background:var(--accent)"></i></div>
              <div class="val">Уровень ${li.level} · опыт ${li.cur} / ${li.need} XP</div>
            </div>
+           ${boostLeft ? '<div class="small" style="margin-top:4px">⭐ доход ×2 ещё ' + Game.fmt.dur(boostLeft) + '</div>' : ''}
            <div class="list-item">
              <div class="li-ico">📦</div>
              <div class="li-main">
@@ -276,7 +287,23 @@ Game.showCompany = function(mode){
                <div class="li-sub">пройдено по дорогам</div>
              </div>
            </div>
-           <button class="btn secondary" data-rename="1" style="margin-top:4px">✏️ Переименовать</button>`}
+           <div class="divider" style="margin:10px 0 8px"></div>
+           <div class="small muted" style="margin-bottom:6px">Динамика за 7 дней</div>
+           <div class="chart">
+             ${chartDays.map(function(d){
+               var hi = Math.max(Math.round(d.in / maxV * 100), d.in ? 6 : 2);
+               var ho = Math.max(Math.round(d.out / maxV * 100), d.out ? 6 : 2);
+               return `<div class="chart-col">
+                 <div class="chart-bars">
+                   <i class="b-in" style="height:${hi}%"></i>
+                   <i class="b-out" style="height:${ho}%"></i>
+                 </div>
+                 <div class="chart-day">${d.day}</div>
+               </div>`;
+             }).join('')}
+           </div>
+           <div class="small muted" style="margin-top:6px"><span class="tag ok">доход</span> <span class="tag danger">расход</span> · максимум за день: ${Game.fmt.money(maxV)}</div>
+           <button class="btn secondary" data-rename="1" style="margin-top:8px">✏️ Переименовать</button>`}
     </div>`;
   document.body.appendChild(el);
 

@@ -4,8 +4,6 @@ Game.screens.home = {
 
   render: function(root){
     var s = Game.state;
-    var li = Game.levelInfo(s.xp);
-    var xpPct = Math.min(100, Math.round(li.cur / li.need * 100));
     var active = s.trips.filter(function(t){ return t.status === 'active'; });
     var rested = s.drivers.filter(function(d){ return d.restUntil <= Date.now() && !Game.economy.driverBusy(d.uid); }).length;
     var boostLeft = (s.stars && s.stars.boostUntil > Date.now()) ? s.stars.boostUntil - Date.now() : 0;
@@ -41,12 +39,6 @@ Game.screens.home = {
     }
 
     root.innerHTML = `
-      <div class="card">
-        <div class="hero-title">🚚 ${Game.esc(Game.companyDisplayName ? Game.companyDisplayName() : Game.playerName + ' Транс')}</div>
-        <div class="hero-sub">Уровень ${li.level} · опыт ${li.cur} / ${li.need} до следующего${boostLeft ? ' · ⭐ доход ×2 ещё ' + Game.fmt.dur(boostLeft) : ''}</div>
-        <div class="progress" style="margin-top:10px"><i style="width:${xpPct}%"></i></div>
-      </div>
-
       <div class="grid2">
         <div class="card">
           <div class="card-title">Свободные машины</div>
@@ -58,11 +50,7 @@ Game.screens.home = {
         </div>
         <div class="card">
           <div class="stat-num" style="color:var(--ok)">${Game.fmt.money(s.money)}</div>
-          <div class="stat-lbl">на счету</div>
-        </div>
-        <div class="card">
-          <div class="stat-num">${s.stats.tripsDone}</div>
-          <div class="stat-lbl">рейсов доставлено</div>
+          <div class="stat-lbl">на счету${boostLeft ? ' · ⭐ ×2 ещё ' + Game.fmt.dur(boostLeft) : ''}</div>
         </div>
       </div>
 

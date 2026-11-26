@@ -26,15 +26,6 @@ Game.screens.office = {
     var full = total >= slots;
     var healRate = 0;
     mechs.forEach(function(m){ healRate += m.skill * 0.4; });
-    var chartDays = [];
-    var maxV = 1;
-    for (var ci = 6; ci >= 0; ci--) {
-      var cd = new Date(now - ci * 86400000);
-      var ck = Game.dayKey(cd);
-      var cf = (s.finance || {})[ck] || { in: 0, out: 0 };
-      chartDays.push({ day: cd.getDate(), in: cf.in || 0, out: cf.out || 0 });
-      maxV = Math.max(maxV, cf.in || 0, cf.out || 0);
-    }
     var places = '';
     s.drivers.forEach(function(){ places += '👨‍✈️'; });
     s.staff.forEach(function(p){ places += p.role === 'accountant' ? '🧾' : '🔧'; });
@@ -126,6 +117,43 @@ Game.screens.office = {
         </div>`;
     }
 
+    // Полный отчёт по последним заказам (до 5) — модалка поверх экрана
+    function orderReportRow(t){
+      var o = t.order;
+      var cargo = Game.data.cargo.find(function(c){ return c.id === o.cargoId; });
+      var time = new Date(t.finishedAt || t.endAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      var net = t.net || 0;
+      return `
+        <div class="list-item" style="align-items:flex-start">
+          <div class="li-main">
+            <div class="li-title" style="font-size:13px">${cargo ? cargo.name : 'Груз'} · ${Game.city(o.from).name} → ${Game.city(o.to).name}</div>
+            <div class="li-sub">${time} · ${Game.fmt.km(o.km)} · ${Game.fmt.ton(o.weight)}</div>
+            <div class="li-sub">оплата +${Game.fmt.money(t.payFinal)} · топливо −${Game.fmt.money(t.fuel || 0)} · аванс −${Game.fmt.money(t.advance || 0)}</div>
+          </div>
+          <span class="tag ${net >= 0 ? 'ok' : 'danger'}">${net >= 0 ? '+' : ''}${Game.fmt.money(net)}</span>
+        </div>`;
+    }
+
+    function showOrdersReport(){
+      var old = document.getElementById('orders-report');
+      if (old) old.remove();
+      var done = s.trips.filter(function(t){ return t.status === 'done'; }).slice(-5).reverse();
+      var el = document.createElement('div');
+      el.className = 'overlay';
+      el.id = 'orders-report';
+      el.innerHTML = `
+        <div class="modal">
+          <div class="modal-x" data-x="1">✕</div>
+          <div class="modal-title">🧾 Полный отчёт — ${done.length} ${Game.plural(done.length, 'заказ', 'заказа', 'заказов')}</div>
+          ${done.length ? done.map(orderReportRow).join('') : '<div class="empty" style="padding:12px">Завершённых рейсов пока нет</div>'}
+          <div class="small muted" style="margin-top:8px">Итог = оплата минус топливо, аванс водителю и оклады персонала</div>
+        </div>`;
+      document.body.appendChild(el);
+      el.addEventListener('click', function(ev){
+        if (ev.target === el || (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-x'))) el.remove();
+      });
+    }
+
     root.innerHTML = `
       <div class="card">
         <div class="card-title">🏢 Офис — уровень ${oLvl}</div>
@@ -154,24 +182,6 @@ Game.screens.office = {
       </div>
 
       <div class="card">
-        <div class="card-title">Динамика за 7 дней</div>
-        <div class="chart">
-          ${chartDays.map(function(d){
-            var hi = Math.max(Math.round(d.in / maxV * 100), d.in ? 6 : 2);
-            var ho = Math.max(Math.round(d.out / maxV * 100), d.out ? 6 : 2);
-            return `<div class="chart-col">
-              <div class="chart-bars">
-                <i class="b-in" style="height:${hi}%"></i>
-                <i class="b-out" style="height:${ho}%"></i>
-              </div>
-              <div class="chart-day">${d.day}</div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div class="small muted" style="margin-top:8px"><span class="tag ok">доход</span> <span class="tag danger">расход</span> · максимум за день: ${Game.fmt.money(maxV)}</div>
-      </div>
-
-      <div class="card">
         <div class="card-title">Персонал</div>
         ${total
           ? s.drivers.map(driverRow).join('') + s.staff.map(staffRow).join('')
@@ -195,6 +205,7 @@ Game.screens.office = {
         <div class="card-title">Отчёт по операциям</div>
         ${acc.length
           ? ((s.oplog || []).slice(0, 15).map(opRow).join('') || '<div class="empty" style="padding:12px">Операций пока нет</div>')
+            + '<button class="btn secondary small" id="orders-report-btn" style="margin-top:8px">📄 Полный отчёт — последние 5 заказов</button>'
           : '<div class="empty"><div class="big">🧾</div>Наймите бухгалтера —<br>он будет вести расчёт доходов и расходов</div>'}
       </div>
     `;
@@ -207,6 +218,8 @@ Game.screens.office = {
         Game.navigate('office', true);
       };
     });
+    var orb = document.getElementById('orders-report-btn');
+    if (orb) orb.onclick = function(){ Game.haptic('tap'); showOrdersReport(); };
     root.querySelectorAll('[data-stab]').forEach(function(b){
       b.onclick = function(){
         Game.haptic('tap');
