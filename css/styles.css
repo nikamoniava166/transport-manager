@@ -151,6 +151,7 @@ body{
 .list-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
 .list-item:last-child{border-bottom:none}
 .li-ico{font-size:22px}
+.li-thumb{width:56px;height:42px;object-fit:cover;border-radius:8px;flex:none;background:var(--panel2)}
 .li-main{flex:1;min-width:0}
 .li-title{font-weight:700;font-size:14px}
 .li-sub{font-size:12px;color:var(--muted)}

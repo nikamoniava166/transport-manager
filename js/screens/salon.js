@@ -105,9 +105,12 @@
         ${D.trucks.map(function(T){
           var locked = T.lvl > lvl;
           var afford = s.money >= T.price;
+          var ico = T.img
+            ? '<img class="li-thumb" src="' + Game.esc(T.img) + '" alt="' + Game.esc(T.name) + '">'
+            : '<div class="li-ico">' + (T.elec ? '⚡' : '🚛') + '</div>';
           return `
             <div class="list-item">
-              <div class="li-ico">${T.elec ? '⚡' : '🚛'}</div>
+              ${ico}
               <div class="li-main">
                 <div class="li-title">${T.name}${locked ? ' 🔒' : ''}</div>
                 <div class="li-sub">${Game.fmt.ton(T.cap)} · ${T.speed} км/ч · ${T.cons} ${T.elec ? 'кВт·ч/100 км · заправка дешевле' : 'л/100 км'}${locked ? ' · нужен ур. ' + T.lvl : ''}</div>
