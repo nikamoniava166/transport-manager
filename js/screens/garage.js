@@ -47,7 +47,7 @@ Game.screens.garage = {
               <div class="val">износ ${Math.round(trailer.wear)}%</div>
             </div>
             <div class="row">
-              <button class="btn secondary small" data-trepair="${trailer.uid}" ${(trailer.wear > 0 && !busy && s.money >= cost) ? '' : 'disabled'}>🔧 Ремонт${trailer.wear > 0 && !busy ? ' · ' + Game.fmt.money(cost) : ''}</button>
+              <button class="btn secondary small" data-trepair="${trailer.uid}" ${(trailer.wear > 0 && !busy) ? '' : 'disabled'}>🔧 Ремонт${trailer.wear > 0 && !busy ? ' · ' + Game.fmt.money(cost) : ''}</button>
               <button class="btn secondary small" data-tdetach="${trailer.uid}" ${busy ? 'disabled' : ''}>Отцепить</button>
             </div>
           </div>`;
@@ -76,7 +76,11 @@ Game.screens.garage = {
       var tier = D.trucks.findIndex(function(x){ return x.id === tr.tid; }) + 1;
       var busy = E.isBusy(tr.uid);
       var repairCost = E.repairCost(tr);
-      var needRepair = tr.wear > 0 && !busy && s.money >= repairCost;
+      var needRepair = tr.wear > 0 && !busy; // деньги/запчасти проверит E.repair — тост объяснит, чего не хватает
+      var tireW = tr.tires || 0;
+      var whTires = (s.warehouse && s.warehouse.tires) || 0;
+      var canTires = !busy && tireW >= 5 && whTires >= D.tireSetSize;
+      var tireNote = tireW >= D.tireMaxWear ? ' — на рейс нельзя' : tireW >= D.tireRiskWear ? ' · риск поломки' : '';
       var sellPrice = E.sellPrice(T.price, tr.wear);
       var canSell = !busy && s.trucks.length > 1;
       var panel = Game.ui.garageUpUid === tr.uid ? upPanel(tr) : '';
@@ -91,6 +95,10 @@ Game.screens.garage = {
             <div class="progress"><i style="width:${Math.min(100, tr.wear)}%;background:${wearColor(tr.wear)}"></i></div>
             <div class="val">износ ${Math.round(tr.wear)}%</div>
           </div>
+          <div class="wear">
+            <div class="progress"><i style="width:${Math.min(100, tireW)}%;background:${wearColor(tireW)}"></i></div>
+            <div class="val">шины ${Math.round(tireW)}%${tireNote}</div>
+          </div>
           ${trailerRow(tr)}
           ${panel}
           <div class="row">
@@ -98,6 +106,7 @@ Game.screens.garage = {
             <button class="btn secondary" data-upg="${tr.uid}">⬆️ Апгрейды</button>
           </div>
           <div class="row" style="margin-top:6px">
+            <button class="btn secondary small" data-tires="${tr.uid}" ${canTires ? '' : 'disabled'}>🛞 Шины · ${D.tireSetSize} шт</button>
             <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? '🏷 Продать · ' + Game.fmt.money(sellPrice) : '🏷 Продать (последняя)'}</button>
           </div>
         </div>`;
@@ -179,6 +188,14 @@ Game.screens.garage = {
     root.querySelectorAll('[data-repair]').forEach(function(b){
       b.onclick = function(){
         var r = E.repair(+b.getAttribute('data-repair'));
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-tires]').forEach(function(b){
+      b.onclick = function(){
+        var r = E.replaceTires(+b.getAttribute('data-tires'));
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);

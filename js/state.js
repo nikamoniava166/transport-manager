@@ -72,8 +72,9 @@
     out.oplog     = Array.isArray(out.oplog)     ? out.oplog     : [];
     out.lastMaintAt = out.lastMaintAt || Date.now();
     out.trucks   = Array.isArray(out.trucks)   ? out.trucks   : d.trucks;
-    // пробег (появился вместе с салоном б/у) — у старых машин копится с нуля
-    out.trucks.forEach(function(t){ if (t.km == null) t.km = 0; });
+    // пробег (появился вместе с салоном б/у) — у старых машин копится с нуля;
+    // шины (шаг «Поломки и шины») у старых машин тоже стартуют с нуля
+    out.trucks.forEach(function(t){ if (t.km == null) t.km = 0; if (t.tires == null) t.tires = 0; });
     out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
     out.drivers  = Array.isArray(out.drivers)  ? out.drivers  : d.drivers;
     out.trips    = Array.isArray(out.trips)    ? out.trips    : [];

@@ -62,13 +62,35 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
     if (!tr || tr.wear <= 0) return { ok: false, msg: 'Ремонт не нужен' };
     if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    var needParts = Game.data.repairParts || 1;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0 };
+    if (s.warehouse.parts < needParts) return { ok: false, msg: 'Нужны запчасти: ' + needParts + ' шт — купите на «Автопарке» → «Склад»' };
     var cost = E.repairCost(tr);
     if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
     s.money -= cost; s.stats.spent += cost;
+    s.warehouse.parts -= needParts;
     tr.wear = 0;
-    E.logOp('out', cost, 'Ремонт: ' + Game.truck(tr.tid).name);
+    E.logOp('out', cost, 'Ремонт: ' + Game.truck(tr.tid).name + ' · запчасти ×' + needParts);
     Game.save();
-    return { ok: true, msg: '🔧 ' + Game.truck(tr.tid).name + ' как новая · −' + Game.fmt.money(cost) };
+    return { ok: true, msg: '🔧 ' + Game.truck(tr.tid).name + ' как новая · −' + Game.fmt.money(cost) + ' · запчасти ×' + needParts };
+  };
+
+  // Замена комплекта шин: тратит шины со склада, сбрасывает износ шин машины
+  E.replaceTires = function(truckUid){
+    var s = Game.state;
+    var tr = null;
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!tr) return { ok: false, msg: 'Машина не найдена' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    if ((tr.tires || 0) < 5) return { ok: false, msg: 'Шины почти новые — замена не нужна' };
+    var need = Game.data.tireSetSize || 4;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0 };
+    if (s.warehouse.tires < need) return { ok: false, msg: 'Нужно шин: ' + need + ' шт — купите на «Автопарке» → «Склад»' };
+    s.warehouse.tires -= need;
+    tr.tires = 0;
+    E.logOp('out', 0, 'Замена шин: ' + Game.truck(tr.tid).name + ' · шины ×' + need);
+    Game.save();
+    return { ok: true, msg: '🛞 Комплект шин заменён · −' + need + ' со склада' };
   };
 
   // ---------- склад запчастей и шин ----------
@@ -238,11 +260,15 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     s.trailers.forEach(function(t){ if (t.uid === trailerUid) trailer = t; });
     if (!trailer || trailer.wear <= 0) return { ok: false, msg: 'Ремонт не нужен' };
     if (trailer.attachedTo && E.isBusy(trailer.attachedTo)) return { ok: false, msg: 'Прицеп в рейсе' };
+    var needParts = Game.data.repairParts || 1;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0 };
+    if (s.warehouse.parts < needParts) return { ok: false, msg: 'Нужны запчасти: ' + needParts + ' шт — купите на «Автопарке» → «Склад»' };
     var cost = E.trailerRepairCost(trailer);
     if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
     s.money -= cost; s.stats.spent += cost;
+    s.warehouse.parts -= needParts;
     trailer.wear = 0;
-    E.logOp('out', cost, 'Ремонт прицепа: ' + Game.trailerType(trailer.tid).name);
+    E.logOp('out', cost, 'Ремонт прицепа: ' + Game.trailerType(trailer.tid).name + ' · запчасти ×' + needParts);
     Game.save();
     return { ok: true, msg: '🔧 Прицеп отремонтирован · −' + Game.fmt.money(cost) };
   };
@@ -419,6 +445,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var rel = eff.rel, wear = tr.wear, luck = driver ? driver.skills.luck : 0;
     // поломка: (износ − 60)/2 % × (1 − надёжность/100)
     var brkChance = Math.max(0, wear - 60) / 200 * (1 - rel / 100);
+    // «лысые» шины добавляют риск поломки (до +6 % при 100 %)
+    var tireWear = tr.tires || 0;
+    if (tireWear > Game.data.tireRiskWear) brkChance += (tireWear - Game.data.tireRiskWear) / 100 * 0.3;
     if (Math.random() < brkChance) events.push({ type: 'breakdown', atFrac: Game.rnd(0.3, 0.8) });
     // остальные события, удача смещает веса
     var pool = [
@@ -512,6 +541,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     s.drivers.forEach(function(x){ if (x.uid === driverUid) dr = x; });
     if (!tr || !dr) return { ok: false, msg: 'Выберите машину и водителя' };
     if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина уже в рейсе' };
+    if ((tr.tires || 0) >= Game.data.tireMaxWear) return { ok: false, msg: 'Шины изношены — замените комплект в автопарке' };
     if (E.driverBusy(driverUid)) return { ok: false, msg: 'Водитель уже в рейсе' };
     if (dr.restUntil > Date.now()) return { ok: false, msg: 'Водитель отдыхает' };
     var eff = E.effTruck(tr);
@@ -606,6 +636,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     s.trucks.forEach(function(x){ if (x.uid === t.truckUid) tr = x; });
     if (tr) {
       tr.km = (tr.km || 0) + o.km; // одометр: пробег виден в салоне б/у и автопарке
+      // шины изнашиваются от пробега; поломка бьёт и по ним
+      tr.tires = Math.min(Game.data.tireMaxWear, Math.round(((tr.tires || 0) + o.km / Game.data.tireWearKmK) * 10) / 10);
+      if (t.brk) tr.tires = Math.min(Game.data.tireMaxWear, Math.round((tr.tires + 10) * 10) / 10);
       var dr = null;
       s.drivers.forEach(function(x){ if (x.uid === t.driverUid) dr = x; });
       var care = dr ? dr.skills.care : 0;
