@@ -23,6 +23,7 @@
       ],
       staff: [],
       staffMarket: { list: [], refreshAt: 0 },
+      warehouse: { parts: 2, tires: 4 },
       oplog: [],
       lastMaintAt: Date.now(),
       trips: [],
