@@ -49,6 +49,14 @@ body{
   mask-image:linear-gradient(180deg, transparent 0, #000 90px, #000 calc(100% - 150px), transparent 100%);
 }
 
+/* ---------- вендоренные SVG-иконки ---------- */
+.ico-svg{width:1em;height:1em;display:inline-block;vertical-align:-0.14em;flex:none}
+.tab .ico .ico-svg{width:20px;height:20px}
+.li-ico .ico-svg{width:24px;height:24px;color:var(--accent)}
+.btn .ico-svg{width:16px;height:16px;margin-right:7px;vertical-align:-2.5px}
+.card-title .ico-svg{width:14px;height:14px;margin-right:5px;vertical-align:-2px}
+.li-sub .ico-svg,.small .ico-svg,.ocrd-sub .ico-svg{width:12px;height:12px;margin-right:3px;vertical-align:-1.5px}
+
 /* ---------- верхняя панель: «приборная доска» ---------- */
 #topbar{
   display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -68,9 +76,10 @@ body{
   padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap;
 }
 .pill.money{
-  background:var(--led);border:1px solid rgba(125,214,79,.35);color:var(--ok);
+  background:var(--led);border:1px solid rgba(125,214,79,.4);color:var(--ok);
   font-variant-numeric:tabular-nums;letter-spacing:.3px;
-  box-shadow:inset 0 1px 3px rgba(0,0,0,.7), 0 0 10px rgba(125,214,79,.12);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.8), 0 0 14px rgba(125,214,79,.18);
+  text-shadow:0 0 6px rgba(125,214,79,.5);
 }
 
 /* ---------- область экрана ---------- */
@@ -87,7 +96,7 @@ body{
   display:flex;gap:2px;
   background:var(--glass);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
-  border:1px solid var(--border);border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);border-radius:14px;
   box-shadow:var(--tab-shadow);
   padding:4px;
 }
@@ -99,16 +108,16 @@ body{
   transition:color .18s ease,background-color .18s ease;
 }
 .tab .ico{font-size:19px;line-height:1;transition:transform .18s ease;filter:grayscale(.4)}
-.tab.active{color:var(--accent);background:var(--tab-active)}
+.tab.active{color:var(--accent);background:var(--tab-active);box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 0 12px rgba(242,154,29,.12)}
 .tab.active .ico{transform:translateY(-1px) scale(1.08);filter:none}
 .tab.active:not(:first-child)::after{content:""}
 
 /* ---------- компоненты: приборные панели ---------- */
 .card{
-  background:linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%), var(--panel);
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 42%), var(--panel);
   border-radius:var(--radius);
   padding:12px;margin-bottom:10px;border:1px solid var(--border);
-  box-shadow:0 2px 10px rgba(0,0,0,.35);
+  box-shadow:0 4px 16px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
 }
 .card .card-title{
   font-size:11px;font-weight:700;color:var(--accent);
@@ -122,20 +131,21 @@ body{
 .stat-num{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
 .stat-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 
-.progress{height:6px;border-radius:6px;background:var(--led);border:1px solid var(--border);overflow:hidden}
-.progress i{display:block;height:100%;border-radius:6px;background:var(--accent);transition:width .4s}
+.progress{height:6px;border-radius:6px;background:var(--led);border:1px solid var(--border);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}
+.progress i{display:block;height:100%;border-radius:6px;background:linear-gradient(180deg, #f7a63a, var(--accent));transition:width .4s;box-shadow:0 0 8px rgba(242,154,29,.35)}
 
 .btn{
-  display:block;width:100%;border:1px solid rgba(255,255,255,.10);
+  display:block;width:100%;border:1px solid rgba(255,255,255,.12);
   border-radius:9px;
   padding:10px 14px;font-family:inherit;font-size:14px;font-weight:700;
-  background:linear-gradient(180deg, #f7a63a, var(--accent));
+  background:linear-gradient(180deg, #f7a63a, #e8890f);
   color:var(--accent-text);cursor:pointer;
-  text-shadow:0 1px 0 rgba(255,255,255,.18);
+  text-shadow:0 1px 0 rgba(255,255,255,.22);
+  box-shadow:0 3px 12px rgba(242,154,29,.22), inset 0 1px 0 rgba(255,255,255,.3);
 }
-.btn:active{transform:scale(.97)}
-.btn.secondary{background:var(--panel2);color:var(--text);text-shadow:none}
-.btn.danger{background:linear-gradient(180deg, #ef6640, var(--danger));color:#fff;text-shadow:none}
+.btn:active{transform:scale(.97);box-shadow:inset 0 2px 6px rgba(0,0,0,.35)}
+.btn.secondary{background:linear-gradient(180deg, #2a3441, var(--panel2));color:var(--text);text-shadow:none;box-shadow:0 3px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06)}
+.btn.danger{background:linear-gradient(180deg, #ef6640, var(--danger));color:#fff;text-shadow:none;box-shadow:0 3px 12px rgba(229,83,47,.28), inset 0 1px 0 rgba(255,255,255,.2)}
 .btn[disabled]{opacity:.45;pointer-events:none}
 .btn + .btn{margin-top:8px}
 .row{display:flex;gap:8px}
@@ -184,13 +194,13 @@ body{
 .divider{height:1px;background:var(--border);margin:8px 0}
 
 /* переключатель сегментов: «тумблеры приборки» */
-.seg{display:flex;background:var(--led);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:8px}
+.seg{display:flex;background:var(--led);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:8px;box-shadow:inset 0 2px 5px rgba(0,0,0,.5)}
 .seg button{
   flex:1;border:none;background:none;color:var(--muted);
   font-family:inherit;font-size:12.5px;font-weight:600;
   padding:7px 4px;border-radius:7px;cursor:pointer;
 }
-.seg button.sel{background:var(--accent);color:var(--accent-text)}
+.seg button.sel{background:linear-gradient(180deg, #f7a63a, var(--accent));color:var(--accent-text);box-shadow:0 2px 8px rgba(242,154,29,.3), inset 0 1px 0 rgba(255,255,255,.25)}
 
 /* ---------- тосты ---------- */
 .toasts{
@@ -212,12 +222,13 @@ body{
 
 /* ---------- чипы выбора, панели, рейсы ---------- */
 .chip{
-  display:inline-block;background:var(--panel2);color:var(--text);
+  display:inline-block;background:linear-gradient(180deg, #2a3441, var(--panel2));color:var(--text);
   border:1px solid var(--border);
   border-radius:7px;padding:6px 11px;font-size:11.5px;font-family:inherit;
   font-weight:600;margin:0 6px 6px 0;cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05);
 }
-.chip.sel{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.chip.sel{background:linear-gradient(180deg, #f7a63a, var(--accent));color:var(--accent-text);border-color:var(--accent);box-shadow:0 2px 8px rgba(242,154,29,.3)}
 .chip[disabled]{opacity:.4}
 .chips{margin:2px 0}
 .panel{margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}
@@ -261,6 +272,8 @@ body{
 /* ---------- салон б/у ---------- */
 .salon-card{padding:0;overflow:hidden}
 .salon-media{position:relative;height:110px;background:var(--led);border-bottom:1px solid var(--border)}
+.salon-media::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, rgba(5,7,10,.15), transparent 40%, rgba(5,7,10,.35))}
 .truck-img{width:100%;height:100%;object-fit:cover;display:block}
 .truck-img.ph{display:flex;align-items:center;justify-content:center;font-size:42px;opacity:.45}
 .salon-deal{
@@ -281,7 +294,7 @@ body{
 
 /* Модалка поверх экрана: карточка компании, ввод названия */
 .overlay{position:fixed;inset:0;z-index:55;background:rgba(3,5,7,.62);display:flex;align-items:center;justify-content:center;padding:18px}
-.modal{position:relative;width:100%;max-width:340px;max-height:86vh;overflow-y:auto;background:var(--glass);border:1px solid rgba(242,154,29,.25);border-radius:13px;box-shadow:0 18px 44px rgba(0,0,0,.6);padding:16px;animation:modal-in .18s ease}
+.modal{position:relative;width:100%;max-width:340px;max-height:86vh;overflow-y:auto;background:var(--glass);border:1px solid rgba(242,154,29,.25);border-radius:13px;box-shadow:0 22px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.06);padding:16px;animation:modal-in .18s ease}
 @keyframes modal-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 .modal-title{font-weight:700;font-size:16px;padding-right:26px}
 .modal-x{position:absolute;top:8px;right:12px;color:var(--muted);font-size:15px;padding:4px;cursor:pointer}

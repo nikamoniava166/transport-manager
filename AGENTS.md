@@ -22,6 +22,7 @@ css/styles.css          — вся тема (CSS-переменные), комп
 js/data.js              — КОНСТАНТЫ: грузовики, прицепы, города, грузы, апгрейды, имена, levelInfo
 js/state.js             — сейвы: defaultState, миграции, localStorage + Telegram CloudStorage
 js/ui.js                — формат чисел, тосты, haptic+звук-хуки, тема, конфетти, updateHUD, название компании в шапке и модалка «карточка компании» (уровень/XP/рейсы/км, лицензии, график за 7 дней)
+js/icons.js            — вендоренные SVG-иконки Lucide (ISC) + Game.ico(name); генерируется tools/make_icons.py
 js/net.js               — сеть: таблица рейтинга и покупки Telegram Stars (BACKEND_URL задан, функции видны в Telegram)
 js/sound.js             — синтезированные звуки (Web Audio, без файлов)
 js/economy.js           — ЯДРО: заказы, рейсы, события, персонал, прицепы, гараж, офис, баланс
@@ -45,7 +46,7 @@ README.md               — публикация и структура
 cover-640x360.png       — обложка мини-приложения
 ```
 
-**Порядок скриптов в index.html важен:** data → state → ui → sound → economy → net → screens → app. Экраны регистрируются в `Game.screens`, ядро — в `Game.economy`, сеть — в `Game.net`. Под-экраны биржи/рейсов — в `Game.views` (регистрирует orders.js после market.js/trips.js).
+**Порядок скриптов в index.html важен:** data → state → ui → icons → sound → economy → net → screens → app. Экраны регистрируются в `Game.screens`, ядро — в `Game.economy`, сеть — в `Game.net`. Под-экраны биржи/рейсов — в `Game.views` (регистрирует orders.js после market.js/trips.js).
 
 ## 3. Как запускать и проверять
 
@@ -121,6 +122,7 @@ cover-640x360.png       — обложка мини-приложения
 - лицензии (разовые): реф 200 000 ₽ с ур. 4, насыпь 350 000 ₽ с ур. 7, ADR 500 000 ₽ с ур. 9, налив 650 000 ₽ с ур. 11; без лицензии заказ не генерируется и не берётся (прицеп всё равно нужен)
 - генерация веса заказа: шанс груза ∝ ((min + допустимый максимум)/2)^`weightTicketK` (0,75); вес = `min + (допустимый максимум − min) × rnd^weightSkewK` (0,75) — средние/тяжёлые заказы чаще, лёгкие остаются под малые машины
 - **Константы баланса** — в `js/data.js` (fuelPrice, fuelPriceElec, kmPerMin, minTripMin, maxTripMin, repairRate, longRoute*, wear*, partPrice, tirePrice, tireWearKmK, tireSetSize, tireRiskWear, tireMaxWear, repairParts, fatigue*, licenses, clients, marketRestockMin/Max, orderLifeMin/Max, weightSkewK, weightTicketK) и в `js/economy.js` (orderPay, tripMinutes, xpGain, pickCargoWeight). GDD (`docs/game-design.md`) должен соответствовать коду — правь оба.
+- **Иконки:** в интерфейсе — `Game.ico('имя')` из `js/icons.js` (вендоренный набор Lucide, ISC; добавить новую — скачать SVG в `.zwork/icons-src/` и перегенерировать `tools/make_icons.py`). Эмодзи остаются только в текстах-тостах, названиях грузов, достижениях и конфетти — это контент, а не иконки.
 - **Тема:** ETS2 «ночная кабина» — фиксированная тёмная палитра, от темы Telegram не зависит. Только через CSS-переменные (`--bg`, `--panel`, `--accent`…), не хардкодь цвета в стилях компонентов. Базовые значения и производные (`--bg2`, `--glow`, `--road`, `--glass`, `--tab-active`, `--tab-shadow`) задаёт `Game.applyTheme` в ui.js — новые цветовые фичи заводи через переменные.
 - **Звук:** только через `Game.sound.play(...)` / `Game.haptic(kind)` — он уважает настройки игрока.
 - **Навигация:** только `Game.navigate('id')`. Экраны — объекты `{ render, onTick?, moneySensitive? }` в `Game.screens`.

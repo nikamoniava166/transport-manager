@@ -44,8 +44,8 @@
           </div>
           <div class="salon-body">
             <div class="li-title">${T.name} <span class="tag">Т${tier}</span></div>
-            <div class="li-sub">${Game.fmt.ton(eff.cap)} груз · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ⚡' : 'л/100 км'} · надёжность ${eff.rel}%</div>
-            <div class="li-sub">🛣️ пробег ${Game.fmt.km(o.km)}${ups.length ? ' · ⬆️ ' + ups.join(', ') : ''}</div>
+            <div class="li-sub">${Game.fmt.ton(eff.cap)} груз · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ' + Game.ico('zap') : 'л/100 км'} · надёжность ${eff.rel}%</div>
+            <div class="li-sub">${Game.ico('route')} пробег ${Game.fmt.km(o.km)}${ups.length ? ' · ' + Game.ico('arrow-up') + ' ' + ups.join(', ') : ''}</div>
             <div class="wear">
               <div class="progress"><i style="width:${Math.min(100, o.wear)}%;background:${wearColor(o.wear)}"></i></div>
               <div class="val">состояние</div>
@@ -64,14 +64,14 @@
     var offersHtml = list.length
       ? list.map(offerCard).join('')
       : `<div class="card"><div class="empty">
-           <div class="big">🏷️</div>
+           <div class="big">${Game.ico('tag')}</div>
            Машины разобрали — ждём новый завоз
            <div class="small muted" style="margin-top:4px">через <span id="salon-refresh">${left}</span></div>
          </div></div>`;
 
     body.innerHTML = `
       <div class="card">
-        <div class="card-title">🏷️ Салон с пробегом</div>
+        <div class="card-title">${Game.ico('tag')} Салон с пробегом</div>
         <div class="li-title">Грузовики б/у — заметно дешевле новых</div>
         <div class="li-sub" style="margin-top:2px">Износ и пробег уже есть, изредка — установленные апгрейды.${list.length ? ' Новый завоз через <span id="salon-refresh">' + left + '</span>.' : ''}</div>
         <div class="small muted" style="margin-top:6px">Гараж: ${s.trucks.length} / ${cap} ${Game.plural(cap, 'место', 'места', 'мест')}${full ? ' — покупка заблокирована, нужно расширение' : ''}</div>
@@ -100,14 +100,14 @@
 
     body.innerHTML = `
       <div class="card">
-        <div class="card-title">🚛 Новые грузовики — у дилера</div>
+        <div class="card-title">${Game.ico('truck')} Новые грузовики — у дилера</div>
         <div class="small muted" style="margin-bottom:4px">Гараж: ${s.trucks.length} / ${cap} ${Game.plural(cap, 'место', 'места', 'мест')}${fullGarage ? ' — покупка заблокирована, нужно расширение' : ''}</div>
         ${D.trucks.map(function(T){
           var locked = T.lvl > lvl;
           var afford = s.money >= T.price;
           var ico = T.img
             ? '<img class="li-thumb" src="' + Game.esc(T.img) + '" alt="' + Game.esc(T.name) + '">'
-            : '<div class="li-ico">' + (T.elec ? '⚡' : '🚛') + '</div>';
+            : '<div class="li-ico">' + Game.ico(T.elec ? 'zap' : 'truck') + '</div>';
           return `
             <div class="list-item">
               ${ico}
@@ -139,14 +139,14 @@
 
     body.innerHTML = `
       <div class="card">
-        <div class="card-title">🛻 Прицепы у дилера</div>
+        <div class="card-title">${Game.ico('boxes')} Прицепы у дилера</div>
         <div class="small muted" style="margin-bottom:4px">Один прицеп на грузовик · не занимают места в гараже · свои прицепы видно в «Автопарке», там же крепятся и продаются</div>
         ${D.trailers.map(function(TT){
           var afford = s.money >= TT.price;
           var compatible = s.trucks.some(function(tr){ return Game.truck(tr.tid).cap >= TT.minCap; });
           return `
             <div class="list-item">
-              <div class="li-ico">🛻</div>
+              <div class="li-ico">${Game.ico('boxes')}</div>
               <div class="li-main">
                 <div class="li-title">${TT.name}${TT.flags.length ? ' ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
                 <div class="li-sub">+${Game.fmt.ton(TT.capAdd)} к грузоподъёмности · расход +${Math.round(TT.consAdd * 100)}%${TT.wearK > 1 ? ' · износ +' + Math.round((TT.wearK - 1) * 100) + '%' : ''} · тягач от ${Game.fmt.ton(TT.minCap)}${compatible ? '' : ' · 🔒 нет подходящего грузовика'}</div>
@@ -179,9 +179,9 @@
       var tab = Game.ui.salonTab === 'new' ? 'new' : Game.ui.salonTab === 'trailers' ? 'trailers' : 'used';
       root.innerHTML = `
         <div class="seg">
-          <button class="${tab === 'used' ? 'sel' : ''}" data-stab="used">🏷 Б/у</button>
-          <button class="${tab === 'new' ? 'sel' : ''}" data-stab="new">🚛 Новые</button>
-          <button class="${tab === 'trailers' ? 'sel' : ''}" data-stab="trailers">🛻 Прицепы</button>
+          <button class="${tab === 'used' ? 'sel' : ''}" data-stab="used">${Game.ico('tag')} Б/у</button>
+          <button class="${tab === 'new' ? 'sel' : ''}" data-stab="new">${Game.ico('truck')} Новые</button>
+          <button class="${tab === 'trailers' ? 'sel' : ''}" data-stab="trailers">${Game.ico('boxes')} Прицепы</button>
         </div>
         <div id="salon-body"></div>`;
       root.querySelectorAll('[data-stab]').forEach(function(b){

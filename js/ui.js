@@ -34,7 +34,7 @@ Game.esc = function(s){
 Game.truckImgHtml = function(T, cls){
   cls = cls || 'truck-img';
   if (T && T.img) return '<img class="' + cls + '" src="' + Game.esc(T.img) + '" alt="' + Game.esc(T.name) + '">';
-  return '<div class="' + cls + ' ph"><span>🚛</span></div>';
+  return '<div class="' + cls + ' ph">' + Game.ico('truck') + '</div>';
 };
 
 Game.toast = function(msg, type){
@@ -198,7 +198,7 @@ Game.updateBrand = function(){
   if (!b) return;
   var c = (Game.state && Game.state.company) || {};
   var name = (c.name && c.name.trim()) || '';
-  b.textContent = name ? '🚚 ' + name : '🚚 Менеджер перевозок';
+  b.textContent = name || 'Менеджер перевозок'; // маркер-«фара» рисует ::before в CSS
   b.classList.toggle('has-name', !!name);
 };
 
@@ -219,10 +219,10 @@ Game.showCompany = function(mode){
     var locked = L.lvl > myLvl;
     var right = owned
       ? '<span class="tag ok">✓ есть</span>'
-      : `<button class="btn small" data-buylic="${L.flag}" ${(locked || s.money < L.price) ? 'disabled' : ''}>${locked ? 'с ур. ' + L.lvl : '📜 ' + Game.fmt.money(L.price)}</button>`;
+      : `<button class="btn small" data-buylic="${L.flag}" ${(locked || s.money < L.price) ? 'disabled' : ''}>${locked ? 'с ур. ' + L.lvl : Game.ico('file-text') + ' ' + Game.fmt.money(L.price)}</button>`;
     return `<div class="list-item">
       <div class="li-main">
-        <div class="li-title" style="font-size:13px">📜 ${Game.esc(L.name)}</div>
+        <div class="li-title" style="font-size:13px">${Game.ico('file-text')} ${Game.esc(L.name)}</div>
         <div class="li-sub">для заказов «${Game.flagLabel(L.flag)}»${owned ? '' : ' · не заменяет спецприцеп'}</div>
       </div>
       ${right}
@@ -243,30 +243,30 @@ Game.showCompany = function(mode){
   el.id = 'company-modal';
   el.innerHTML = `
     <div class="modal">
-      <div class="modal-x" data-x="1">✕</div>
+      <div class="modal-x" data-x="1">${Game.ico('x')}</div>
       ${naming
-        ? `<div class="modal-title">🏢 Назовите компанию</div>
+        ? `<div class="modal-title">${Game.ico('building-2')} Назовите компанию</div>
            <div class="li-sub">Название появится слева вверху. Изменить можно в любой момент — клик по названию.</div>
            <input id="company-input" maxlength="24" placeholder="Например: «Шеф Транс»" value="${Game.esc(s.company.name || '')}" style="margin-top:10px">
            <div class="row" style="margin-top:10px">
              <button class="btn" data-save="1">Сохранить</button>
              ${s.company.named ? '' : '<button class="btn secondary" data-skip="1">Пока без названия</button>'}
            </div>`
-        : `<div class="modal-title">🏢 ${Game.esc(Game.companyDisplayName())}</div>
+        : `<div class="modal-title">${Game.ico('building-2')} ${Game.esc(Game.companyDisplayName())}</div>
            <div class="wear" style="margin-top:4px">
              <div class="progress"><i style="width:${xpPct}%;background:var(--accent)"></i></div>
              <div class="val">Уровень ${li.level} · опыт ${li.cur} / ${li.need} XP</div>
            </div>
-           ${boostLeft ? '<div class="small" style="margin-top:4px">⭐ доход ×2 ещё ' + Game.fmt.dur(boostLeft) + '</div>' : ''}
+           ${boostLeft ? '<div class="small" style="margin-top:4px">' + Game.ico('star') + ' доход ×2 ещё ' + Game.fmt.dur(boostLeft) + '</div>' : ''}
            <div class="list-item">
-             <div class="li-ico">📦</div>
+             <div class="li-ico">${Game.ico('package')}</div>
              <div class="li-main">
                <div class="li-title">${st.tripsDone || 0}</div>
                <div class="li-sub">${Game.plural(st.tripsDone || 0, 'доставленный рейс', 'доставленных рейса', 'доставленных рейсов')}</div>
              </div>
            </div>
            <div class="list-item">
-             <div class="li-ico">🛣️</div>
+             <div class="li-ico">${Game.ico('route')}</div>
              <div class="li-main">
                <div class="li-title">${Game.fmt.km(st.km || 0)}</div>
                <div class="li-sub">пройдено по дорогам</div>
@@ -291,7 +291,7 @@ Game.showCompany = function(mode){
              }).join('')}
            </div>
            <div class="small muted" style="margin-top:6px"><span class="tag ok">доход</span> <span class="tag danger">расход</span> · максимум за день: ${Game.fmt.money(maxV)}</div>
-           <button class="btn secondary" data-rename="1" style="margin-top:8px">✏️ Переименовать</button>`}
+           <button class="btn secondary" data-rename="1" style="margin-top:8px">${Game.ico('pencil')} Переименовать</button>`}
     </div>`;
   document.body.appendChild(el);
 

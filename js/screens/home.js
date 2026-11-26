@@ -10,7 +10,7 @@ Game.screens.home = {
     var di = Game.economy.dailyInfo ? Game.economy.dailyInfo() : { claimed: true, streak: 0, nextStreak: 1, reward: 0 };
     var diHtml = di.claimed
       ? '<div class="small muted">Бонус забран · приходите завтра. Серия: ' + di.streak + ' ' + Game.plural(di.streak, 'день', 'дня', 'дней') + '.</div>'
-      : '<div class="li-sub">Серия: ' + di.nextStreak + ' ' + Game.plural(di.nextStreak, 'день', 'дня', 'дней') + ' · награда: <b style="color:var(--ok)">' + Game.fmt.money(di.reward) + '</b></div><button class="btn" id="claim-daily" style="margin-top:8px">🎁 Забрать бонус</button>';
+      : '<div class="li-sub">Серия: ' + di.nextStreak + ' ' + Game.plural(di.nextStreak, 'день', 'дня', 'дней') + ' · награда: <b style="color:var(--ok)">' + Game.fmt.money(di.reward) + '</b></div><button class="btn" id="claim-daily" style="margin-top:8px">' + Game.ico('gift') + ' Забрать бонус</button>';
     Game.ui.homeSig = active.map(function(t){ return t.uid; }).join(',');
 
     var tripsHtml;
@@ -23,7 +23,7 @@ Game.screens.home = {
         return `
           <div class="trip">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-              <div class="li-title">🚚 ${cargo.name} · ${from} → ${to}</div>
+              <div class="li-title">${Game.ico('truck')} ${cargo.name} · ${from} → ${to}</div>
               <span class="small muted" data-trip="${t.uid}" data-remain>осталось ${Game.fmt.dur(t.endAt - Date.now())}</span>
             </div>
             <div class="progress" style="margin-top:6px"><i data-trip="${t.uid}" data-bar style="width:${p.toFixed(1)}%"></i></div>
@@ -32,7 +32,7 @@ Game.screens.home = {
     } else {
       tripsHtml = `
         <div class="empty" style="padding:18px 8px">
-          <div class="big">🛣️</div>
+          <div class="big">${Game.ico('route')}</div>
           На дорогах пусто — машины не зарабатывают.<br>
           <span class="small muted">Возьмите заказ на бирже</span>
         </div>`;
@@ -53,7 +53,7 @@ Game.screens.home = {
       <div class="card">
         <div class="card-title">Сейчас в пути — ${active.length}</div>
         ${tripsHtml}
-        ${active.length ? '' : '<button class="btn" id="go-market">🧭 Диспетчер</button>'}
+        ${active.length ? '' : '<button class="btn" id="go-market">' + Game.ico('compass') + ' Диспетчер</button>'}
       </div>
 
       <div class="card">
@@ -62,8 +62,8 @@ Game.screens.home = {
       </div>
 
       <div class="row">
-        <button class="btn secondary" id="go-garage">🚛 Автопарк</button>
-        <button class="btn secondary" id="go-acc">🏢 Офис</button>
+        <button class="btn secondary" id="go-garage">${Game.ico('truck')} Автопарк</button>
+        <button class="btn secondary" id="go-acc">${Game.ico('building-2')} Офис</button>
       </div>
     `;
     var gm = document.getElementById('go-market');

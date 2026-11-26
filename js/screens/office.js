@@ -27,13 +27,13 @@ Game.screens.office = {
     var healRate = 0;
     mechs.forEach(function(m){ healRate += m.skill * 0.4; });
     var places = '';
-    s.drivers.forEach(function(){ places += '👨‍✈️'; });
-    s.staff.forEach(function(p){ places += p.role === 'accountant' ? '🧾' : '🔧'; });
+    s.drivers.forEach(function(){ places += Game.ico('user-round'); });
+    s.staff.forEach(function(p){ places += p.role === 'accountant' ? Game.ico('calculator') : Game.ico('wrench'); });
     for (var pi = total; pi < slots; pi++) places += '⬜';
 
     function driverStatus(d){
-      if (E.driverBusy(d.uid)) return '<span class="tag accent">🛣️ в рейсе</span>';
-      if (d.restUntil > now) return '<span class="tag warn" data-driver-rest="' + d.uid + '">😴 отдых ' + Game.fmt.dur(d.restUntil - now) + '</span>';
+      if (E.driverBusy(d.uid)) return '<span class="tag accent">' + Game.ico('route') + ' в рейсе</span>';
+      if (d.restUntil > now) return '<span class="tag warn" data-driver-rest="' + d.uid + '">' + Game.ico('bed') + ' отдых ' + Game.fmt.dur(d.restUntil - now) + '</span>';
       if ((d.fatigue || 0) >= 100) return '<span class="tag danger">😵 устал — нужен отдых</span>';
       return '<span class="tag ok">готов · усталость ' + Math.round(d.fatigue || 0) + '%</span>';
     }
@@ -49,19 +49,19 @@ Game.screens.office = {
           freeTr.map(function(x){ return `<button class="chip" data-att="${d.uid}|${x.uid}">${Game.truck(x.tid).name} №${x.uid}</button>`; }).join('') || '<span class="small muted">Свободных машин нет</span>'
         } <button class="chip" data-attoff="1">Отмена</button></div>`;
       } else {
-        attachHtml = `<button class="btn small secondary" data-attsel="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>${dTruck ? '🔄 Сменить машину' : '🚚 Закрепить'}</button>${dTruck ? `<button class="btn small secondary" data-detdrv="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>🔓</button>` : ''}`;
+        attachHtml = `<button class="btn small secondary" data-attsel="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>${dTruck ? Game.ico('arrow-left-right') + ' Сменить машину' : Game.ico('truck') + ' Закрепить'}</button>${dTruck ? `<button class="btn small secondary" data-detdrv="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>${Game.ico('lock-open')}</button>` : ''}`;
       }
       return `
         <div class="list-item">
-          <div class="li-ico">👨‍✈️</div>
+          <div class="li-ico">${Game.ico('user-round')}</div>
           <div class="li-main">
             <div class="li-title">${Game.esc(d.name)}</div>
             <div class="li-sub">водитель · скорость ${d.skills.speed} · аккуратность ${d.skills.care} · удача ${d.skills.luck} · ${d.share}% с рейса</div>
-            <div class="li-sub">🚚 ${dTruck ? Game.truck(dTruck.tid).name + ' №' + dTruck.uid : 'без машины — рейсов не берёт'} · усталость ${Math.round(d.fatigue || 0)}%</div>
-            <div style="margin-top:4px">${driverStatus(d)} <button class="btn small secondary" data-restdrv="${d.uid}" ${canRest ? '' : 'disabled'}>😴 Отдых</button></div>
+            <div class="li-sub">${Game.ico('truck')} ${dTruck ? Game.truck(dTruck.tid).name + ' №' + dTruck.uid : 'без машины — рейсов не берёт'} · усталость ${Math.round(d.fatigue || 0)}%</div>
+            <div style="margin-top:4px">${driverStatus(d)} <button class="btn small secondary" data-restdrv="${d.uid}" ${canRest ? '' : 'disabled'}>${Game.ico('bed')} Отдых</button></div>
             <div style="margin-top:6px">${attachHtml}</div>
           </div>
-          <button class="btn small danger" data-firedrv="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>✕</button>
+          <button class="btn small danger" data-firedrv="${d.uid}" ${E.driverBusy(d.uid) ? 'disabled' : ''}>${Game.ico('x')}</button>
         </div>`;
     }
 
@@ -72,7 +72,7 @@ Game.screens.office = {
         : '−' + (p.skill * 1.5).toLocaleString('ru-RU') + '% износа за рейс';
       return `
         <div class="list-item">
-          <div class="li-ico">${isAcc ? '🧾' : '🔧'}</div>
+          <div class="li-ico">${isAcc ? Game.ico('calculator') : Game.ico('wrench')}</div>
           <div class="li-main">
             <div class="li-title">${Game.esc(p.name)}</div>
             <div class="li-sub">${isAcc ? 'бухгалтер' : 'механик'} · мастерство ${p.skill}/10 · ${effect}</div>
@@ -81,14 +81,14 @@ Game.screens.office = {
             <div class="small"><b>${Game.fmt.money(p.salary)}</b></div>
             <div class="small muted">с рейса</div>
           </div>
-          <button class="btn small danger" data-fire="${p.uid}">✕</button>
+          <button class="btn small danger" data-fire="${p.uid}">${Game.ico('x')}</button>
         </div>`;
     }
 
     function driverCandRow(c){
       return `
         <div class="list-item">
-          <div class="li-ico">👨‍✈️</div>
+          <div class="li-ico">${Game.ico('user-round')}</div>
           <div class="li-main">
             <div class="li-title">${Game.esc(c.name)}</div>
             <div class="li-sub">водитель · скорость ${c.skills.speed} · аккуратность ${c.skills.care} · удача ${c.skills.luck}</div>
@@ -107,7 +107,7 @@ Game.screens.office = {
         : '−' + (c.skill * 1.5).toLocaleString('ru-RU') + '% износа';
       return `
         <div class="list-item">
-          <div class="li-ico">${isAcc ? '🧾' : '🔧'}</div>
+          <div class="li-ico">${isAcc ? Game.ico('calculator') : Game.ico('wrench')}</div>
           <div class="li-main">
             <div class="li-title">${Game.esc(c.name)}</div>
             <div class="li-sub">${isAcc ? 'бухгалтер' : 'механик'} · мастерство ${c.skill}/10 · ${effect}</div>
@@ -158,8 +158,8 @@ Game.screens.office = {
       el.id = 'orders-report';
       el.innerHTML = `
         <div class="modal">
-          <div class="modal-x" data-x="1">✕</div>
-          <div class="modal-title">🧾 Полный отчёт — ${done.length} ${Game.plural(done.length, 'заказ', 'заказа', 'заказов')}</div>
+          <div class="modal-x" data-x="1">${Game.ico('x')}</div>
+          <div class="modal-title">${Game.ico('file-text')} Полный отчёт — ${done.length} ${Game.plural(done.length, 'заказ', 'заказа', 'заказов')}</div>
           ${done.length ? done.map(orderReportRow).join('') : '<div class="empty" style="padding:12px">Завершённых рейсов пока нет</div>'}
           <div class="small muted" style="margin-top:8px">Итог = оплата минус топливо, аванс водителю и оклады персонала</div>
         </div>`;
@@ -171,11 +171,11 @@ Game.screens.office = {
 
     root.innerHTML = `
       <div class="card">
-        <div class="card-title">🏢 Офис — уровень ${oLvl}</div>
+        <div class="card-title">${Game.ico('building-2')} Офис — уровень ${oLvl}</div>
         <div class="li-title">${total} / ${slots} ${Game.plural(slots, 'рабочее место', 'рабочих места', 'рабочих мест')}</div>
         <div class="li-sub" style="font-size:15px;letter-spacing:2px;margin:4px 0 8px">${places}</div>
         ${oCost != null
-          ? `<button class="btn" data-upgoffice="1" ${s.money >= oCost ? '' : 'disabled'}>🏗️ Расширить (+1 место) · ${Game.fmt.money(oCost)}</button>`
+          ? `<button class="btn" data-upgoffice="1" ${s.money >= oCost ? '' : 'disabled'}>${Game.ico('building-2')} Расширить (+1 место) · ${Game.fmt.money(oCost)}</button>`
           : '<div class="small muted center">Достигнут максимальный размер</div>'}
       </div>
 
@@ -220,8 +220,8 @@ Game.screens.office = {
         <div class="card-title">Отчёт по операциям</div>
         ${acc.length
           ? ((s.oplog || []).slice(0, 15).map(opRow).join('') || '<div class="empty" style="padding:12px">Операций пока нет</div>')
-            + '<button class="btn secondary small" id="orders-report-btn" style="margin-top:8px">📄 Полный отчёт — последние 5 заказов</button>'
-          : '<div class="empty"><div class="big">🧾</div>Наймите бухгалтера —<br>он будет вести расчёт доходов и расходов</div>'}
+            + '<button class="btn secondary small" id="orders-report-btn" style="margin-top:8px">' + Game.ico('file-text') + ' Полный отчёт — последние 5 заказов</button>'
+          : '<div class="empty"><div class="big">' + Game.ico('file-text') + '</div>Наймите бухгалтера —<br>он будет вести расчёт доходов и расходов</div>'}
       </div>
     `;
 
@@ -321,7 +321,7 @@ Game.screens.office = {
         if (el.className.indexOf('ok') < 0) { el.className = 'tag ok'; el.textContent = 'готов'; }
         return;
       }
-      el.textContent = '😴 отдых ' + Game.fmt.dur(d.restUntil - Date.now());
+      el.innerHTML = Game.ico('bed') + ' отдых ' + Game.fmt.dur(d.restUntil - Date.now());
     });
   }
 };

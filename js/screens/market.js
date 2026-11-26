@@ -34,10 +34,10 @@ Game.screens.market = {
         <div class="card ocrd">
           <div class="ocrd-top">
             <div class="ocrd-name">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочно ×1,4</span>' : ''}${flagTags}</div>
-            <div class="ocrd-pay">💰 ${Game.fmt.money(o.pay)}</div>
+            <div class="ocrd-pay">${Game.ico('coins')} ${Game.fmt.money(o.pay)}</div>
           </div>
-          <div class="ocrd-sub">📍 ${from} → ${to} · ${o.km} км · ≈${min} мин · ⏳ ${Math.max(1, Math.round((o.expiresAt - now) / 60000))} мин</div>
-          ${panel || `<button class="btn mini" data-open="${o.uid}" ${can ? '' : 'disabled'}>${can ? '🚚 Отправить' : noFitLabel}</button>`}
+          <div class="ocrd-sub">${Game.ico('map-pin')} ${from} → ${to} · ${o.km} км · ≈${min} мин · ${Game.ico('clock')} ${Math.max(1, Math.round((o.expiresAt - now) / 60000))} мин</div>
+          ${panel || `<button class="btn mini" data-open="${o.uid}" ${can ? '' : 'disabled'}>${can ? Game.ico('send') + ' Отправить' : noFitLabel}</button>`}
         </div>`;
     }
 
@@ -116,11 +116,11 @@ Game.screens.market = {
           ${drvNote}
           <div class="small" style="margin-top:8px">
             ⛽ Топливо: <b style="color:var(--danger)">${Game.fmt.money(fuel)}</b> ·
-            👨‍✈️ Аванс: <b style="color:var(--danger)">${Game.fmt.money(advance)}</b> ·
-            💰 По доставке: <b style="color:var(--ok)">${Game.fmt.money(o.pay)}</b>
+            ${Game.ico('user-round')} Аванс: <b style="color:var(--danger)">${Game.fmt.money(advance)}</b> ·
+            ${Game.ico('coins')} По доставке: <b style="color:var(--ok)">${Game.fmt.money(o.pay)}</b>
           </div>
           <div class="row" style="margin-top:10px">
-            <button class="btn" data-go="${isContract ? 'c' : ''}${o.uid}" ${ok ? '' : 'disabled'}>${enough ? (isContract ? '🚚 Рейс по контракту' : '🚚 В рейс!') : 'Не хватает денег'}</button>
+            <button class="btn" data-go="${isContract ? 'c' : ''}${o.uid}" ${ok ? '' : 'disabled'}>${enough ? (isContract ? Game.ico('truck') + ' Рейс по контракту' : Game.ico('send') + ' В рейс!') : 'Не хватает денег'}</button>
             <button class="btn secondary" data-cancel="1">Отмена</button>
           </div>
         </div>`;
@@ -141,16 +141,16 @@ Game.screens.market = {
       var panel = Game.ui.dispatchOrderUid === 'c' + c.uid ? dispatchPanel(c, true) : '';
       return `
         <div class="card">
-          <div class="li-title">📄 ${Game.esc(c.client)} · серия ${c.trips} ${Game.plural(c.trips, 'рейс', 'рейса', 'рейсов')}</div>
-          <div class="li-sub" style="margin-top:4px">📦 ${cargo.name} ${Game.fmt.ton(c.weight)} · 📍 ${from} → ${to} · ${c.km} км · ≈${c.minPerTrip} мин/рейс</div>
-          <div class="li-sub" style="margin-top:2px">⏳ на серию: ${Game.fmt.dur(c.deadline - now)} · предложение висит ${Math.max(1, Math.round((c.expiresAt - now) / 60000))} мин</div>
+          <div class="li-title">${Game.ico('file-text')} ${Game.esc(c.client)} · серия ${c.trips} ${Game.plural(c.trips, 'рейс', 'рейса', 'рейсов')}</div>
+          <div class="li-sub" style="margin-top:4px">📦 ${cargo.name} ${Game.fmt.ton(c.weight)} · ${Game.ico('map-pin')} ${from} → ${to} · ${c.km} км · ≈${c.minPerTrip} мин/рейс</div>
+          <div class="li-sub" style="margin-top:2px">${Game.ico('clock')} на серию: ${Game.fmt.dur(c.deadline - now)} · предложение висит ${Math.max(1, Math.round((c.expiresAt - now) / 60000))} мин</div>
           <div style="margin-top:8px">
-            <span class="tag accent">💰 ${Game.fmt.money(c.pay)}/рейс</span>
-            <span class="tag ok">🏆 бонус ${Game.fmt.money(c.bonus)}</span>
-            <span class="tag danger">⚠ штраф ${Game.fmt.money(c.penalty)}</span>
+            <span class="tag accent">${Game.ico('coins')} ${Game.fmt.money(c.pay)}/рейс</span>
+            <span class="tag ok">${Game.ico('trophy')} бонус ${Game.fmt.money(c.bonus)}</span>
+            <span class="tag danger">${Game.ico('triangle-alert')} штраф ${Game.fmt.money(c.penalty)}</span>
             ${flagTags}
           </div>
-          ${panel || `<button class="btn" data-open="c${c.uid}" ${can ? '' : 'disabled'}>📝 Взять контракт</button>`}
+          ${panel || `<button class="btn" data-open="c${c.uid}" ${can ? '' : 'disabled'}>${Game.ico('file-text')} Взять контракт</button>`}
         </div>`;
     }
 
@@ -170,15 +170,15 @@ Game.screens.market = {
       var panel = Game.ui.dispatchOrderUid === 'c' + c.uid ? dispatchPanel(c, true) : '';
       return `
         <div class="card">
-          <div class="card-title">📄 Контракт: ${Game.esc(c.client)}</div>
-          <div class="li-sub">📦 ${cargo.name} · 📍 ${Game.city(c.from).name} → ${Game.city(c.to).name} · ${c.km} км</div>
+          <div class="card-title">${Game.ico('file-text')} Контракт: ${Game.esc(c.client)}</div>
+          <div class="li-sub">📦 ${cargo.name} · ${Game.ico('map-pin')} ${Game.city(c.from).name} → ${Game.city(c.to).name} · ${c.km} км</div>
           <div class="li-title" style="margin-top:6px;font-size:15px;letter-spacing:2px">${dots}</div>
           <div style="margin-top:8px">
-            <span class="tag ${left < 10 * 60000 ? 'danger' : ''}">⏱ осталось ${Game.fmt.dur(left)}</span>
-            <span class="tag ok">🏆 бонус ${Game.fmt.money(c.bonus)}</span>
-            <span class="tag danger">⚠ штраф ${Game.fmt.money(c.penalty)}</span>
+            <span class="tag ${left < 10 * 60000 ? 'danger' : ''}">${Game.ico('clock')} осталось ${Game.fmt.dur(left)}</span>
+            <span class="tag ok">${Game.ico('trophy')} бонус ${Game.fmt.money(c.bonus)}</span>
+            <span class="tag danger">${Game.ico('triangle-alert')} штраф ${Game.fmt.money(c.penalty)}</span>
           </div>
-          ${panel || `<button class="btn" data-open="c${c.uid}" ${can ? '' : 'disabled'}>${c.done < c.trips ? '🚚 Рейс по контракту (' + c.done + '/' + c.trips + ')' : 'Серия выполнена'}</button>`}
+          ${panel || `<button class="btn" data-open="c${c.uid}" ${can ? '' : 'disabled'}>${c.done < c.trips ? Game.ico('truck') + ' Рейс по контракту (' + c.done + '/' + c.trips + ')' : 'Серия выполнена'}</button>`}
         </div>`;
     }
 
@@ -186,13 +186,13 @@ Game.screens.market = {
     var contractsHtml = con.active
       ? activeContractCard(con.active)
       : (con.offers.length
-        ? `<div class="card placeholder-card center"><b>📄 Контракты — постоянные клиенты</b><div class="small muted" style="margin-top:4px">Выполните всю серию — бонус · провалите срок — штраф</div></div>${con.offers.map(contractCard).join('')}`
+        ? `<div class="card placeholder-card center"><b>${Game.ico('file-text')} Контракты — постоянные клиенты</b><div class="small muted" style="margin-top:4px">Выполните всю серию — бонус · провалите срок — штраф</div></div>${con.offers.map(contractCard).join('')}`
         : '');
 
     root.innerHTML = `
       <div class="card placeholder-card center">
         <b>Биржа заказов</b>
-        <div class="small muted" style="margin-top:4px">Заказов: ${s.market.orders.length} / ${E.marketSlots()} · 🕒 завоз через <span id="restockTimer">—</span></div>
+        <div class="small muted" style="margin-top:4px">Заказов: ${s.market.orders.length} / ${E.marketSlots()} · ${Game.ico('clock')} завоз через <span id="restockTimer">—</span></div>
       </div>
       ${contractsHtml}
       ${s.market.orders.map(orderCard).join('') || '<div class="card"><div class="empty">Биржа пуста — ждите ближайший завоз</div></div>'}

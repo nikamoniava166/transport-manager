@@ -42,15 +42,15 @@
     return `
       <div class="trip">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-          <div class="li-title">🚛 ${truck ? Game.economy.effTruck(truck).name : 'Машина'} · ${cargo.name} ${Game.fmt.ton(o.weight)}</div>
+          <div class="li-title">${Game.ico('truck')} ${truck ? Game.economy.effTruck(truck).name : 'Машина'} · ${cargo.name} ${Game.fmt.ton(o.weight)}</div>
           <span class="small muted" data-trip="${t.uid}" data-remain>осталось ${Game.fmt.dur(t.endAt - Date.now())}</span>
         </div>
-        <div class="li-sub" style="margin-top:2px">📍 ${Game.city(o.from).name} → ${Game.city(o.to).name} · ${o.km} км · 👨‍✈️ ${driver ? Game.esc(driver.name) : '—'}${o.urgent ? ' · срочный' : ''}</div>
+        <div class="li-sub" style="margin-top:2px">${Game.ico('map-pin')} ${Game.city(o.from).name} → ${Game.city(o.to).name} · ${o.km} км · ${Game.ico('user-round')} ${driver ? Game.esc(driver.name) : '—'}${o.urgent ? ' · срочный' : ''}</div>
         ${flags.length ? '<div class="small muted" style="margin-top:2px">Требования: ' + flags.map(function(f){ return Game.flagLabel(f); }).join(', ') + (trailer ? ' · прицеп ' + Game.trailerType(trailer.tid).name : '') + '</div>' : ''}
         <div class="progress" style="margin:8px 0"><i data-trip="${t.uid}" data-bar style="width:${p.toFixed(1)}%"></i></div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div class="chips" data-trip="${t.uid}" data-events>${eventChips(t)}</div>
-          <span class="small muted">💰 ${Game.fmt.money(t.payFinal)}</span>
+          <span class="small muted">${Game.ico('coins')} ${Game.fmt.money(t.payFinal)}</span>
         </div>
       </div>`;
   }
@@ -76,13 +76,13 @@
     var left = Math.max(0, c.deadline - Date.now());
     return `
       <div class="card">
-        <div class="card-title">📄 Контракт: ${Game.esc(c.client)}</div>
-        <div class="li-sub">📦 ${cargo.name} ${Game.fmt.ton(c.weight)} · 📍 ${Game.city(c.from).name} → ${Game.city(c.to).name} · ${c.km} км · серия ${c.trips} ${Game.plural(c.trips, 'рейс', 'рейса', 'рейсов')}</div>
+        <div class="card-title">${Game.ico('file-text')} Контракт: ${Game.esc(c.client)}</div>
+        <div class="li-sub">📦 ${cargo.name} ${Game.fmt.ton(c.weight)} · ${Game.ico('map-pin')} ${Game.city(c.from).name} → ${Game.city(c.to).name} · ${c.km} км · серия ${c.trips} ${Game.plural(c.trips, 'рейс', 'рейса', 'рейсов')}</div>
         <div class="li-title" style="margin-top:6px;font-size:15px;letter-spacing:2px">${dots}</div>
         <div style="margin-top:8px">
-          <span class="tag ${left < 10 * 60000 ? 'danger' : ''}">⏱ осталось ${Game.fmt.dur(left)}</span>
-          <span class="tag ok">🏆 бонус ${Game.fmt.money(c.bonus)}</span>
-          <span class="tag danger">⚠ штраф ${Game.fmt.money(c.penalty)}</span>
+          <span class="tag ${left < 10 * 60000 ? 'danger' : ''}">${Game.ico('clock')} осталось ${Game.fmt.dur(left)}</span>
+          <span class="tag ok">${Game.ico('trophy')} бонус ${Game.fmt.money(c.bonus)}</span>
+          <span class="tag danger">${Game.ico('triangle-alert')} штраф ${Game.fmt.money(c.penalty)}</span>
         </div>
         <div class="li-sub" style="margin-top:6px">Рейсы по контракту — на «Бирже»</div>
       </div>`;
@@ -99,7 +99,7 @@
         ${con ? contractCard(con) : ''}
         <div class="card">
           <div class="card-title">Активные рейсы — ${active.length}</div>
-          ${active.length ? active.map(activeCard).join('') : '<div class="empty"><div class="big">🛣️</div>Сейчас все машины стоят.<br><span class="small">Возьмите заказ на бирже</span></div>'}
+          ${active.length ? active.map(activeCard).join('') : '<div class="empty"><div class="big">' + Game.ico('route') + '</div>Сейчас все машины стоят.<br><span class="small">Возьмите заказ на бирже</span></div>'}
         </div>
         <div class="card">
           <div class="card-title">История — последние 10</div>

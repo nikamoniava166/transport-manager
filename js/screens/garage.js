@@ -41,13 +41,13 @@ Game.screens.garage = {
         var cost = E.trailerRepairCost(trailer);
         return `
           <div class="panel" style="padding-top:8px">
-            <div class="small"><b>🛻 Прицеп:</b> ${TT.name} · +${Game.fmt.ton(TT.capAdd)} → итого ${Game.fmt.ton(eff.cap)}${TT.flags.length ? ' · ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
+            <div class="small"><b>${Game.ico('boxes')} Прицеп:</b> ${TT.name} · +${Game.fmt.ton(TT.capAdd)} → итого ${Game.fmt.ton(eff.cap)}${TT.flags.length ? ' · ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
             <div class="wear">
               <div class="progress"><i style="width:${Math.min(100, trailer.wear)}%;background:${wearColor(trailer.wear)}"></i></div>
               <div class="val">износ ${Math.round(trailer.wear)}%</div>
             </div>
             <div class="row">
-              <button class="btn secondary small" data-trepair="${trailer.uid}" ${(trailer.wear > 0 && !busy) ? '' : 'disabled'}>🔧 Ремонт${trailer.wear > 0 && !busy ? ' · ' + Game.fmt.money(cost) : ''}</button>
+              <button class="btn secondary small" data-trepair="${trailer.uid}" ${(trailer.wear > 0 && !busy) ? '' : 'disabled'}>${Game.ico('wrench')} Ремонт${trailer.wear > 0 && !busy ? ' · ' + Game.fmt.money(cost) : ''}</button>
               <button class="btn secondary small" data-tdetach="${trailer.uid}" ${busy ? 'disabled' : ''}>Отцепить</button>
             </div>
           </div>`;
@@ -65,7 +65,7 @@ Game.screens.garage = {
              <button class="btn secondary small" data-tpickoff="1" style="margin-top:4px">Отмена</button>`
           : '<div class="small muted" style="margin-top:6px">На складе нет подходящего прицепа — купите ниже</div>';
       } else {
-        html += `<button class="btn secondary small" style="margin-top:6px" data-tpick="${tr.uid}" ${yard.length ? '' : 'disabled'}>➕ Прицепить прицеп</button>`;
+        html += `<button class="btn secondary small" style="margin-top:6px" data-tpick="${tr.uid}" ${yard.length ? '' : 'disabled'}>${Game.ico('plus')} Прицепить прицеп</button>`;
       }
       return html + '</div>';
     }
@@ -93,18 +93,18 @@ Game.screens.garage = {
           freeDrv.map(function(x){ return `<button class="chip" data-attdrv="${x.uid}|${tr.uid}">${Game.esc(x.name)}</button>`; }).join('') || '<span class="small muted">Свободных водителей нет</span>'
         }</div><button class="btn secondary small" data-drvpickoff="1" style="margin-top:4px">Отмена</button></div>`;
       } else if (drv) {
-        drvBlock = `<button class="btn secondary small" data-detdrv="${drv.uid}" ${E.driverBusy(drv.uid) ? 'disabled' : ''}>🔓 Открепить ${Game.esc(drv.name)}</button>`;
+        drvBlock = `<button class="btn secondary small" data-detdrv="${drv.uid}" ${E.driverBusy(drv.uid) ? 'disabled' : ''}>${Game.ico('lock-open')} Открепить ${Game.esc(drv.name)}</button>`;
       } else {
-        drvBlock = `<button class="btn secondary small" data-drvpick="${tr.uid}">👨‍✈️ Закрепить водителя</button>`;
+        drvBlock = `<button class="btn secondary small" data-drvpick="${tr.uid}">${Game.ico('user-round')} Закрепить водителя</button>`;
       }
       return `
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <div class="li-title">🚚 ${T.name}${busy ? ' <span class="tag accent">🛣️ в рейсе</span>' : ''}</div>
+            <div class="li-title">${Game.ico('truck')} ${T.name}${busy ? ' <span class="tag accent">' + Game.ico('route') + ' в рейсе</span>' : ''}</div>
             <span class="tag">Т${tier} · №${tr.uid}</span>
           </div>
-          <div class="li-sub" style="margin-top:4px">${Game.fmt.ton(eff.cap)} груз${eff.trailer ? ' (с прицепом)' : ''} · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ⚡' : 'л/100 км'} · надёжность ${eff.rel}%${tr.km > 0 ? ' · пробег ' + Game.fmt.km(tr.km) : ''}</div>
-          <div class="li-sub">👨‍✈️ ${drv ? Game.esc(drv.name) + (E.driverBusy(drv.uid) ? ' · в рейсе' : ' · усталость ' + Math.round(drv.fatigue || 0) + '%') : '<b>без водителя — рейсов не берёт</b>'}</div>
+          <div class="li-sub" style="margin-top:4px">${Game.fmt.ton(eff.cap)} груз${eff.trailer ? ' (с прицепом)' : ''} · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ' + Game.ico('zap') : 'л/100 км'} · надёжность ${eff.rel}%${tr.km > 0 ? ' · пробег ' + Game.fmt.km(tr.km) : ''}</div>
+          <div class="li-sub">${Game.ico('user-round')} ${drv ? Game.esc(drv.name) + (E.driverBusy(drv.uid) ? ' · в рейсе' : ' · усталость ' + Math.round(drv.fatigue || 0) + '%') : '<b>без водителя — рейсов не берёт</b>'}</div>
           <div class="wear">
             <div class="progress"><i style="width:${Math.min(100, tr.wear)}%;background:${wearColor(tr.wear)}"></i></div>
             <div class="val">износ ${Math.round(tr.wear)}%</div>
@@ -116,12 +116,12 @@ Game.screens.garage = {
           ${trailerRow(tr)}
           ${panel}
           <div class="row">
-            <button class="btn secondary" data-repair="${tr.uid}" ${needRepair ? '' : 'disabled'}>🔧 Ремонт${tr.wear > 0 && !busy ? ' · ' + Game.fmt.money(repairCost) : ''}</button>
-            <button class="btn secondary" data-upg="${tr.uid}">⬆️ Апгрейды</button>
+            <button class="btn secondary" data-repair="${tr.uid}" ${needRepair ? '' : 'disabled'}>${Game.ico('wrench')} Ремонт${tr.wear > 0 && !busy ? ' · ' + Game.fmt.money(repairCost) : ''}</button>
+            <button class="btn secondary" data-upg="${tr.uid}">${Game.ico('arrow-up')} Апгрейды</button>
           </div>
           <div class="row" style="margin-top:6px">
-            <button class="btn secondary small" data-tires="${tr.uid}" ${canTires ? '' : 'disabled'}>🛞 Шины · ${D.tireSetSize} шт</button>
-            <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? '🏷 Продать · ' + Game.fmt.money(sellPrice) : '🏷 Продать (последняя)'}</button>
+            <button class="btn secondary small" data-tires="${tr.uid}" ${canTires ? '' : 'disabled'}>${Game.ico('circle-dot')} Шины · ${D.tireSetSize} шт</button>
+            <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? Game.ico('tag') + ' Продать · ' + Game.fmt.money(sellPrice) : Game.ico('tag') + ' Продать (последняя)'}</button>
           </div>
           <div class="row" style="margin-top:6px">${drvBlock}</div>
         </div>`;
@@ -137,12 +137,12 @@ Game.screens.garage = {
       var price = E.sellPrice(TT.price, t.wear);
       return `
         <div class="list-item">
-          <div class="li-ico">🛻</div>
+          <div class="li-ico">${Game.ico('boxes')}</div>
           <div class="li-main">
             <div class="li-title">${TT.name}${TT.flags.length ? ' ' + TT.flags.map(flagLabel).join(' ') : ''}</div>
-            <div class="li-sub">${place} · износ ${Math.round(t.wear)}%${onTrip ? ' · 🛣️ в рейсе' : ''}</div>
+            <div class="li-sub">${place} · износ ${Math.round(t.wear)}%${onTrip ? ' · ' + Game.ico('route') + ' в рейсе' : ''}</div>
           </div>
-          <button class="btn secondary small" data-tsell="${t.uid}|${price}" ${onTrip ? 'disabled' : ''}>🏷 ${Game.fmt.money(price)}</button>
+          <button class="btn secondary small" data-tsell="${t.uid}|${price}" ${onTrip ? 'disabled' : ''}>${Game.ico('tag')} ${Game.fmt.money(price)}</button>
         </div>`;
     }
 
@@ -152,22 +152,22 @@ Game.screens.garage = {
     var gCost = E.garageUpCost();
     var freePlaces = Math.max(0, cap - s.trucks.length);
     var places = '';
-    for (var gi = 0; gi < s.trucks.length; gi++) places += '🚛';
-    for (var gj = 0; gj < freePlaces; gj++) places += '⬜';
+    for (var gi = 0; gi < s.trucks.length; gi++) places += Game.ico('truck');
+    for (var gj = 0; gj < freePlaces; gj++) places += Game.ico('square');
 
     root.innerHTML = `
       <div class="card">
-        <div class="card-title">🏗️ Гараж — уровень ${gLvl}</div>
+        <div class="card-title">${Game.ico('warehouse')} Гараж — уровень ${gLvl}</div>
         <div class="li-title">${s.trucks.length} / ${cap} ${Game.plural(cap, 'место', 'места', 'мест')} для машин</div>
         <div class="li-sub" style="font-size:15px;letter-spacing:2px;margin:4px 0 8px">${places}</div>
         ${gCost != null
-          ? `<button class="btn" data-upggarage="1" ${s.money >= gCost ? '' : 'disabled'}>🏗️ Расширить (+2 места) · ${Game.fmt.money(gCost)}</button>`
+          ? `<button class="btn" data-upggarage="1" ${s.money >= gCost ? '' : 'disabled'}>${Game.ico('warehouse')} Расширить (+2 места) · ${Game.fmt.money(gCost)}</button>`
           : '<div class="small muted center">Достигнут максимальный размер</div>'}
       </div>
       <div class="card">
-        <div class="card-title">📦 Склад</div>
+        <div class="card-title">${Game.ico('package')} Склад</div>
         <div class="list-item">
-          <div class="li-ico">🔩</div>
+          <div class="li-ico">${Game.ico('cog')}</div>
           <div class="li-main">
             <div class="li-title">Запчасти · ${wh.parts}</div>
             <div class="li-sub">${Game.fmt.money(D.partPrice)} за штуку</div>
@@ -178,7 +178,7 @@ Game.screens.garage = {
           </div>
         </div>
         <div class="list-item">
-          <div class="li-ico">🛞</div>
+          <div class="li-ico">${Game.ico('circle-dot')}</div>
           <div class="li-main">
             <div class="li-title">Шины · ${wh.tires}</div>
             <div class="li-sub">${Game.fmt.money(D.tirePrice)} за штуку</div>
@@ -337,7 +337,7 @@ Game.screens.garage = {
           timer = setTimeout(function(){
             armed = false;
             b.className = 'btn secondary small';
-            b.textContent = '🏷 Продать · ' + Game.fmt.money(price);
+            b.innerHTML = Game.ico('tag') + ' Продать · ' + Game.fmt.money(price);
           }, 4000);
         } else {
           clearTimeout(timer);
@@ -363,7 +363,7 @@ Game.screens.garage = {
           timer = setTimeout(function(){
             armed = false;
             b.className = 'btn secondary small';
-            b.textContent = '🏷 ' + Game.fmt.money(price);
+            b.innerHTML = Game.ico('tag') + ' ' + Game.fmt.money(price);
           }, 4000);
         } else {
           clearTimeout(timer);

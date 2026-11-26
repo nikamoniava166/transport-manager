@@ -103,6 +103,11 @@ Game.init = function(){
   Game.load();
   Game.updateHUD();
 
+  // вендоренные SVG-иконки: заполняем все [data-ico] (таб-бар и статические места)
+  document.querySelectorAll('[data-ico]').forEach(function(el){
+    el.innerHTML = Game.ico(el.getAttribute('data-ico'));
+  });
+
   // Офлайн-прогресс: доводим мир до «сейчас» молча и показываем сводку
   var r = Game.economy.settle(true);
   if (r.resolved > 0) {

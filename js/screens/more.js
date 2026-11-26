@@ -23,7 +23,7 @@ Game.screens.more = {
           ? ' · сейчас: ' + Game.plural(activeTrips, 'рейс в пути', 'рейса в пути', 'рейсов в пути')
           : ' · нет активных рейсов';
         if (P.id === 'money' && moneyLeft > 0) sub += ' · ещё ' + Game.fmt.dur(moneyLeft);
-        var ico = P.id === 'money' ? '💳' : P.id === 'boost' ? '⭐' : P.id === 'hurry' ? '⏩' : '🔧';
+        var ico = Game.ico(P.id === 'money' ? 'wallet' : P.id === 'boost' ? 'star' : P.id === 'hurry' ? 'fast-forward' : 'wrench');
         return `
           <div class="list-item">
             <div class="li-ico">${ico}</div>
@@ -36,13 +36,13 @@ Game.screens.more = {
       }).join('');
       shopHtml = `
         <div class="card">
-          <div class="card-title">⭐ Магазин</div>
+          <div class="card-title">${Game.ico('star')} Магазин</div>
           <div class="small muted" style="margin-bottom:4px">Покупки за Telegram Stars — удобства, а не преимущество: контент и уровни не продаются.</div>
           ${rows}
         </div>`;
       lbHtml = `
         <div class="card">
-          <div class="card-title">🏆 Рейтинг компаний</div>
+          <div class="card-title">${Game.ico('trophy')} Рейтинг компаний</div>
           <div id="lb-body">
             <div class="small muted">Капитал = деньги + машины + прицепы. Обновляется после рейсов.</div>
             <button class="btn secondary" id="lb-load" style="margin-top:8px">Показать топ-20</button>
@@ -59,7 +59,7 @@ Game.screens.more = {
           <div><div class="stat-num" style="color:var(--ok)">${Game.fmt.money(s.stats.earned)}</div><div class="stat-lbl">заработано</div></div>
           <div><div class="stat-num" style="color:var(--danger)">${Game.fmt.money(s.stats.spent)}</div><div class="stat-lbl">потрачено</div></div>
         </div>
-        ${s.stats.breakdowns ? '<div class="small muted" style="margin-top:6px">⚡ Поломок в пути: ' + s.stats.breakdowns + '</div>' : ''}
+        ${s.stats.breakdowns ? '<div class="small muted" style="margin-top:6px">' + Game.ico('zap') + ' Поломок в пути: ' + s.stats.breakdowns + '</div>' : ''}
         <div class="divider" style="margin:10px 0 6px"></div>
         <div class="small muted">Персонал нанимается на вкладке «Офис» — водитель занимает одно рабочее место вместе с бухгалтерами и механиками</div>
       </div>
@@ -70,7 +70,7 @@ Game.screens.more = {
           ${Game.data.achievements.map(function(a){
             var got = s.achievements && s.achievements[a.id];
             return `<div class="ach${got ? ' got' : ''}">
-              <div class="ach-ico">${got ? a.icon : '🔒'}</div>
+              <div class="ach-ico">${got ? a.icon : Game.ico('lock')}</div>
               <div class="ach-name">${a.name}</div>
               <div class="ach-desc">${a.desc}</div>
             </div>`;
@@ -83,8 +83,8 @@ Game.screens.more = {
 
       <div class="card">
         <div class="card-title">Настройки</div>
-        <button class="btn secondary" id="toggle-sound">${s.settings.sound ? '🔊 Звук: вкл' : '🔇 Звук: выкл'}</button>
-        <button class="btn secondary" id="toggle-haptic">${s.settings.haptic ? '📳 Вибрация: вкл' : '📳 Вибрация: выкл'}</button>
+        <button class="btn secondary" id="toggle-sound">${Game.ico(s.settings.sound ? 'volume-2' : 'volume-x')} Звук: ${s.settings.sound ? 'вкл' : 'выкл'}</button>
+        <button class="btn secondary" id="toggle-haptic">${Game.ico('smartphone')} Вибрация: ${s.settings.haptic ? 'вкл' : 'выкл'}</button>
         <button class="btn danger" id="reset-btn">Сбросить прогресс</button>
       </div>
 
@@ -114,7 +114,7 @@ Game.screens.more = {
         Game.haptic('tap');
         var id = b.getAttribute('data-stars');
         b.disabled = true;
-        b.textContent = '⏳';
+        b.innerHTML = Game.ico('clock');
         Game.net.buy(id, function(r){
           if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
           else { Game.haptic('err'); Game.toast(r.msg || 'Покупка не удалась', 'err'); }

@@ -24,8 +24,8 @@
       var tripsNow = Game.state.trips.filter(function(t){ return t.status === 'active'; }).length;
       root.innerHTML = `
         <div class="seg">
-          <button class="${tab === 'market' ? 'sel' : ''}" data-otab="market">📦 Биржа</button>
-          <button class="${tab === 'trips' ? 'sel' : ''}" data-otab="trips">🛣️ Рейсы${tripsNow ? ' · ' + tripsNow : ''}</button>
+          <button class="${tab === 'market' ? 'sel' : ''}" data-otab="market">${Game.ico('package')} Биржа</button>
+          <button class="${tab === 'trips' ? 'sel' : ''}" data-otab="trips">${Game.ico('route')} Рейсы${tripsNow ? ' · ' + tripsNow : ''}</button>
         </div>
         <div id="orders-body"></div>`;
       root.querySelectorAll('[data-otab]').forEach(function(b){
