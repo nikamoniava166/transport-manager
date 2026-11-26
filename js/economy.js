@@ -527,6 +527,36 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return Math.min(9, 5 + Math.floor((lvl - 1) / 3));
   };
 
+  // Общий выбор груза и веса для биржи и контрактов (чтобы обе генерации совпадали):
+  // 1) шанс груза пропорционален полезному весу (min + допустимый максимум)/2 в степени
+  //    weightTicketK (<1 — смягчение, чтобы лёгкие заказы под малые машины оставались на бирже);
+  // 2) вес внутри диапазона смещён к средней/тяжёлой части: rnd^weightSkewK (weightSkewK < 1).
+  E.pickCargoWeight = function(cargos, fleetCap, flaggedCap){
+    var tickets = [];
+    var total = 0;
+    cargos.forEach(function(c){
+      var mw = Math.min(c.max, fleetCap);
+      (c.flags || []).forEach(function(f){ if (flaggedCap[f] < mw) mw = flaggedCap[f]; });
+      if (mw < c.min) return;
+      var w = Math.pow(Math.max(0.3, (c.min + mw) / 2), Game.data.weightTicketK || 1);
+      total += w;
+      tickets.push({ c: c, mw: mw, w: w });
+    });
+    if (!tickets.length) return null;
+    var roll = Math.random() * total;
+    var pick = tickets[tickets.length - 1];
+    for (var i = 0; i < tickets.length; i++) {
+      roll -= tickets[i].w;
+      if (roll <= 0) { pick = tickets[i]; break; }
+    }
+    var t = Math.pow(Math.random(), Game.data.weightSkewK);
+    return {
+      cargo: pick.c,
+      maxW: pick.mw,
+      weight: Math.round((pick.c.min + (pick.mw - pick.c.min) * t) * 10) / 10
+    };
+  };
+
   E.generateOrder = function(){
     var s = Game.state;
     var lvl = Game.levelInfo(s.xp).level;
@@ -548,10 +578,10 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       return true;
     });
     if (!cargos.length) return null;
-    var cargo = Game.pick(cargos);
-    var maxW = Math.min(cargo.max, fleetCap);
-    (cargo.flags || []).forEach(function(f){ if (flaggedCap[f] < maxW) maxW = flaggedCap[f]; });
-    var weight = Math.round(Game.rnd(cargo.min, maxW) * 10) / 10;
+    var pw = E.pickCargoWeight(cargos, fleetCap, flaggedCap);
+    if (!pw) return null;
+    var cargo = pw.cargo;
+    var weight = pw.weight;
     var a = Game.pick(cities), b;
     do { b = Game.pick(cities); } while (b.id === a.id);
     var km = Game.dist(a.id, b.id);
@@ -682,10 +712,10 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       return true;
     });
     if (!cargos.length) return null;
-    var cargo = Game.pick(cargos);
-    var maxW = Math.min(cargo.max, fleetCap);
-    (cargo.flags || []).forEach(function(f){ if (flaggedCap[f] < maxW) maxW = flaggedCap[f]; });
-    var weight = Math.round(Game.rnd(cargo.min, maxW) * 10) / 10;
+    var pw = E.pickCargoWeight(cargos, fleetCap, flaggedCap);
+    if (!pw) return null;
+    var cargo = pw.cargo;
+    var weight = pw.weight;
     var a = Game.pick(cities), b;
     do { b = Game.pick(cities); } while (b.id === a.id);
     var km = Game.dist(a.id, b.id);
