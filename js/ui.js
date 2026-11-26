@@ -243,6 +243,21 @@ Game.showCompany = function(mode){
   var xpPct = Math.min(100, Math.round(li.cur / li.need * 100));
   var st = s.stats || {};
   var boostLeft = (s.stars && s.stars.boostUntil > Date.now()) ? s.stars.boostUntil - Date.now() : 0;
+  var myLvl = Game.levelInfo(s.xp).level;
+  var licHtml = (Game.data.licenses || []).map(function(L){
+    var owned = s.licenses && s.licenses[L.flag];
+    var locked = L.lvl > myLvl;
+    var right = owned
+      ? '<span class="tag ok">✓ есть</span>'
+      : `<button class="btn small" data-buylic="${L.flag}" ${(locked || s.money < L.price) ? 'disabled' : ''}>${locked ? 'с ур. ' + L.lvl : '📜 ' + Game.fmt.money(L.price)}</button>`;
+    return `<div class="list-item">
+      <div class="li-main">
+        <div class="li-title" style="font-size:13px">📜 ${Game.esc(L.name)}</div>
+        <div class="li-sub">для заказов «${Game.flagLabel(L.flag)}»${owned ? '' : ' · не заменяет спецприцеп'}</div>
+      </div>
+      ${right}
+    </div>`;
+  }).join('');
   // динамика доход/расход за 7 дней (переехала с «Офиса»)
   var chartDays = [], maxV = 1;
   for (var ci = 6; ci >= 0; ci--) {
@@ -288,6 +303,9 @@ Game.showCompany = function(mode){
              </div>
            </div>
            <div class="divider" style="margin:10px 0 8px"></div>
+           <div class="small muted" style="margin-bottom:4px">Лицензии на категории грузов</div>
+           ${licHtml}
+           <div class="divider" style="margin:10px 0 8px"></div>
            <div class="small muted" style="margin-bottom:6px">Динамика за 7 дней</div>
            <div class="chart">
              ${chartDays.map(function(d){
@@ -326,6 +344,12 @@ Game.showCompany = function(mode){
     if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-skip')) { s.company.named = true; Game.save(); close(); }
     if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-rename')) { Game.haptic('tap'); Game.showCompany('name'); }
     if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-save')) save();
+    if (ev.target && ev.target.hasAttribute && ev.target.hasAttribute('data-buylic')) {
+      var r = Game.economy.buyLicense(ev.target.getAttribute('data-buylic'));
+      if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+      else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+      Game.showCompany('view'); // перерисовать модалку с новым состоянием лицензий
+    }
   });
   el.addEventListener('keydown', function(ev){
     if (ev.key === 'Enter' && ev.target && ev.target.id === 'company-input') save();

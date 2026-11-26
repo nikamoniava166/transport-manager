@@ -247,7 +247,7 @@ body.is-light .card{box-shadow:0 2px 10px rgba(23,33,43,.06)}
 
 /* Модалка поверх экрана: карточка компании, ввод названия */
 .overlay{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:18px}
-.modal{position:relative;width:100%;max-width:340px;background:var(--glass);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.35);padding:16px;animation:modal-in .18s ease}
+.modal{position:relative;width:100%;max-width:340px;max-height:86vh;overflow-y:auto;background:var(--glass);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.35);padding:16px;animation:modal-in .18s ease}
 @keyframes modal-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
 .modal-title{font-weight:700;font-size:16px;padding-right:26px}
 .modal-x{position:absolute;top:8px;right:12px;color:var(--muted);font-size:15px;padding:4px;cursor:pointer}

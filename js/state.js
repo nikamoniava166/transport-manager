@@ -26,6 +26,7 @@
       warehouse: { parts: 2, tires: 4 },
       company: { name: '', named: false },
       contracts: { offers: [], active: null },
+      licenses: {},
       oplog: [],
       lastMaintAt: Date.now(),
       trips: [],
@@ -57,6 +58,7 @@
     out.contracts     = Object.assign({}, d.contracts,      (st && st.contracts)     || {});
     if (!Array.isArray(out.contracts.offers)) out.contracts.offers = [];
     if (!(out.contracts.active && out.contracts.active.uid)) out.contracts.active = null;
+    out.licenses = (st && st.licenses && typeof st.licenses === 'object' && !Array.isArray(st.licenses)) ? st.licenses : {};
     out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
     out.achievements = (st && st.achievements && typeof st.achievements === 'object' && !Array.isArray(st.achievements)) ? st.achievements : {};
     out.finance      = (st && st.finance && typeof st.finance === 'object' && !Array.isArray(st.finance)) ? st.finance : {};

@@ -488,6 +488,38 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return events;
   };
 
+  // ---------- лицензии на категории грузов ----------
+
+  E.hasLicense = function(flag){
+    var l = Game.state.licenses;
+    return !!(l && l[flag]);
+  };
+
+  // первый флаг без лицензии (или null)
+  E.missingLicense = function(flags){
+    flags = flags || [];
+    for (var i = 0; i < flags.length; i++) if (!E.hasLicense(flags[i])) return flags[i];
+    return null;
+  };
+
+  E.buyLicense = function(flag){
+    var s = Game.state;
+    var L = null;
+    (Game.data.licenses || []).forEach(function(x){ if (x.flag === flag) L = x; });
+    if (!L) return { ok: false, msg: 'Лицензия не найдена' };
+    if (E.hasLicense(flag)) return { ok: false, msg: 'Эта лицензия уже куплена' };
+    var lvl = Game.levelInfo(s.xp).level;
+    if (L.lvl > lvl) return { ok: false, msg: 'Нужен уровень ' + L.lvl };
+    if (s.money < L.price) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(L.price) };
+    s.money -= L.price; s.stats.spent += L.price;
+    if (!s.licenses) s.licenses = {};
+    s.licenses[flag] = true;
+    E.logOp('out', L.price, 'Лицензия: ' + L.name);
+    Game.save();
+    Game.updateHUD();
+    return { ok: true, msg: '📜 ' + L.name + ' получена!' };
+  };
+
   // ---------- биржа заказов ----------
 
   E.marketSlots = function(){
@@ -512,6 +544,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       if (c.lvl > lvl || c.min > fleetCap) return false;
       var fl = c.flags || [];
       for (var i = 0; i < fl.length; i++) if (!flaggedCap[fl[i]] || flaggedCap[fl[i]] < c.min) return false;
+      for (var j = 0; j < fl.length; j++) if (!E.hasLicense(fl[j])) return false; // без лицензии компании не появляется
       return true;
     });
     if (!cargos.length) return null;
@@ -614,6 +647,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (eff.cap < order.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (order.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
     if (missing.length) return { ok: false, msg: Game.flagRequirement(missing[0]) };
+    var noLic = E.missingLicense(order.flags);
+    if (noLic) return { ok: false, msg: 'Нет лицензии: ' + Game.flagLabel(noLic) + ' — купите в карточке компании' };
     var r = E.buildTrip(order, tr, eff, dr, order.urgent);
     if (!r.ok) return r;
     s.market.orders = s.market.orders.filter(function(o){ return o.uid !== orderUid; });
@@ -640,6 +675,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       if (c.lvl > lvl || c.min > fleetCap) return false;
       var fl = c.flags || [];
       for (var i = 0; i < fl.length; i++) if (!flaggedCap[fl[i]] || flaggedCap[fl[i]] < c.min) return false;
+      for (var j = 0; j < fl.length; j++) if (!E.hasLicense(fl[j])) return false; // без лицензии компании не появляется
       return true;
     });
     if (!cargos.length) return null;
@@ -703,6 +739,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (eff.cap < c.weight) return { ok: false, msg: 'Грузоподъёмности не хватает' };
     var missing = (c.flags || []).filter(function(f){ return eff.flags.indexOf(f) < 0; });
     if (missing.length) return { ok: false, msg: Game.flagRequirement(missing[0]) };
+    var noLicC = E.missingLicense(c.flags);
+    if (noLicC) return { ok: false, msg: 'Нет лицензии: ' + Game.flagLabel(noLicC) + ' — купите в карточке компании' };
     var orderLike = { cargoId: c.cargoId, from: c.from, to: c.to, km: c.km, weight: c.weight, pay: c.pay, flags: c.flags };
     var r = E.buildTrip(orderLike, tr, eff, dr, false, 'Контракт', c.uid);
     if (!r.ok) return r;
