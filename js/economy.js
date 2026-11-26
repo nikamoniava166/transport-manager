@@ -1195,6 +1195,17 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       Game.updateHUD();
       return { ok: true, msg: '🎁 ' + (g.note || 'Бонус') + ': +' + Game.fmt.money(amount) };
     }
+    // штраф от владельца: отрицательная сумма, список не уводим в минус
+    if (g && g.kind === 'money' && g.amount < 0) {
+      var fine = Math.min(s.money, Math.round(-g.amount));
+      if (fine > 0) {
+        s.money -= fine;
+        E.logOp('out', fine, g.note || 'Штраф');
+        Game.save();
+        Game.updateHUD();
+      }
+      return { ok: true, msg: '⚖️ ' + (g.note || 'Штраф') + ': −' + Game.fmt.money(fine) };
+    }
     return { ok: false };
   };
 

@@ -23,6 +23,16 @@ wrangler d1 execute transport-manager --remote --command "INSERT INTO grants (us
 ```
 
 Выдача одноразовая: `/grant` помечает строку `claimed_at` в момент отдачи. Пока поддерживается `kind='money'`.
+
+### Штраф игроку
+
+Тот же механизм, но с отрицательной суммой — клиент списывает деньги и пишет запись «расход» в журнал операций (баланс не уводится в минус: если денег меньше штрафа, списывается всё до нуля):
+
+```
+wrangler d1 execute transport-manager --remote --command "INSERT INTO grants (user_id, kind, amount, note, created_at) VALUES (<telegram_id>, 'money', -150000, 'Штраф за название компании', <мс-метка времени>)"
+```
+
+Важно: сначала убедись, что на сайте опубликован клиент с поддержкой отрицательных грантов (коммит «Balance: owner fines via grants»), иначе воркер пометит грант выданным, а старый клиент его проигнорирует и штраф пропадёт.
 | `/leaderboard` | POST | Топ-20 по капиталу + место игрока |
 | `/purchase` | POST | Создать счёт Telegram Stars (`createInvoiceLink`) |
 | `/purchase/claim` | POST | Активировать оплаченный счёт (один раз); в строгом режиме немного ждёт подтверждения вебхуком |
