@@ -831,7 +831,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       tr.km = (tr.km || 0) + o.km; // одометр: пробег виден в салоне б/у и автопарке
       // шины изнашиваются от пробега; поломка бьёт и по ним
       tr.tires = Math.min(Game.data.tireMaxWear, Math.round(((tr.tires || 0) + o.km / Game.data.tireWearKmK) * 10) / 10);
-      if (t.brk) tr.tires = Math.min(Game.data.tireMaxWear, Math.round((tr.tires + 10) * 10) / 10);
+      if (t.brk) tr.tires = Math.min(Game.data.tireMaxWear, Math.round((tr.tires + Game.data.tireBreakHit) * 10) / 10);
       var dr = null;
       s.drivers.forEach(function(x){ if (x.uid === t.driverUid) dr = x; });
       var care = dr ? dr.skills.care : 0;
