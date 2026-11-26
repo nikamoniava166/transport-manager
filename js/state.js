@@ -30,7 +30,7 @@
       oplog: [],
       lastMaintAt: Date.now(),
       trips: [],
-      market: { orders: [], refreshAt: 0 },
+      market: { orders: [], restockAt: 0 },
       salon: { list: [], refreshAt: 0 },
       stars: { boostUntil: 0, lastMoneyAt: 0 },
       stats: { tripsDone: 0, earned: 0, spent: 0, km: 0, breakdowns: 0 },

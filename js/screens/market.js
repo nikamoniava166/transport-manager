@@ -31,15 +31,13 @@ Game.screens.market = {
       var panel = '';
       if (Game.ui.dispatchOrderUid === String(o.uid)) panel = dispatchPanel(o, false);
       return `
-        <div class="card">
-          <div class="li-title">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочный ×1,4</span>' : ''}</div>
-          <div class="li-sub" style="margin-top:4px">📍 ${from} → ${to} · ${o.km} км · ≈${min} мин · ⏳ ${Math.max(1, Math.round((o.expiresAt - now) / 60000))} мин на бирже</div>
-          <div style="margin-top:8px">
-            <span class="tag accent">💰 ${Game.fmt.money(o.pay)}</span>
-            <span class="tag">нужно ≥ ${Game.fmt.ton(o.weight)} грузоподъёмности</span>
-            ${flagTags}
+        <div class="card ocrd">
+          <div class="ocrd-top">
+            <div class="ocrd-name">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочно ×1,4</span>' : ''}${flagTags}</div>
+            <div class="ocrd-pay">💰 ${Game.fmt.money(o.pay)}</div>
           </div>
-          ${panel || `<button class="btn" data-open="${o.uid}" ${can ? '' : 'disabled'}>${can ? '🚚 Отправить машину' : noFitLabel}</button>`}
+          <div class="ocrd-sub">📍 ${from} → ${to} · ${o.km} км · ≈${min} мин · ⏳ ${Math.max(1, Math.round((o.expiresAt - now) / 60000))} мин</div>
+          ${panel || `<button class="btn mini" data-open="${o.uid}" ${can ? '' : 'disabled'}>${can ? '🚚 Отправить' : noFitLabel}</button>`}
         </div>`;
     }
 
@@ -194,10 +192,10 @@ Game.screens.market = {
     root.innerHTML = `
       <div class="card placeholder-card center">
         <b>Биржа заказов</b>
-        <div class="small muted" style="margin-top:4px">Заказов: ${s.market.orders.length} / ${E.marketSlots()} · список обновляется сам</div>
+        <div class="small muted" style="margin-top:4px">Заказов: ${s.market.orders.length} / ${E.marketSlots()} · 🕒 завоз через <span id="restockTimer">—</span></div>
       </div>
       ${contractsHtml}
-      ${s.market.orders.map(orderCard).join('') || '<div class="card"><div class="empty">Биржа пуста — новые заказы появятся в течение минуты</div></div>'}
+      ${s.market.orders.map(orderCard).join('') || '<div class="card"><div class="empty">Биржа пуста — ждите ближайший завоз</div></div>'}
     `;
 
     root.querySelectorAll('[data-open]').forEach(function(b){
@@ -253,6 +251,9 @@ Game.screens.market = {
   },
 
   onTick: function(){
+    // таймер завоза обновляем без перерисовки списка
+    var rt = document.getElementById('restockTimer');
+    if (rt) rt.textContent = Game.fmt.dur(Math.max(0, Game.state.market.restockAt - Date.now()));
     // пока открыт выбор машины/водителя — список не перерисовываем
     if (Game.ui.dispatchOrderUid != null) return;
     var con = Game.state.contracts || { offers: [], active: null };

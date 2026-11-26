@@ -564,7 +564,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       pay: E.orderPay(km, weight, cargo.mult, urgent),
       urgent: urgent,
       flags: (cargo.flags || []).slice(),
-      expiresAt: Date.now() + Game.rndInt(10, 30) * 60000
+      expiresAt: Date.now() + Game.rndInt(Game.data.orderLifeMin, Game.data.orderLifeMax) * 60000
     };
   };
 
@@ -573,12 +573,15 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var now = Date.now();
     s.market.orders = (s.market.orders || []).filter(function(o){ return o.expiresAt > now; });
     var slots = E.marketSlots();
+    // завоз партиями: новая партия раз в 3–5 минут (метка времени restockAt; 0 — завоз прямо сейчас)
+    if (s.market.restockAt && s.market.restockAt > now) return;
     var guard = 0;
     while (s.market.orders.length < slots && guard++ < 20) {
       var o = E.generateOrder();
       if (!o) break;
       s.market.orders.push(o);
     }
+    s.market.restockAt = now + Game.rndInt(Game.data.marketRestockMin, Game.data.marketRestockMax) * 60000;
   };
 
   // ---------- рейсы ----------
