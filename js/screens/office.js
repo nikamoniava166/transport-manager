@@ -18,7 +18,8 @@ Game.screens.office = {
     var dayIn = 0, dayOut = 0;
     (s.oplog || []).forEach(function(op){
       if (op.t > now - 86400000) {
-        if (op.cat === 'in') dayIn += op.amount; else dayOut += op.amount;
+        if (op.cat === 'in') dayIn += op.amount;
+        else if (op.cat === 'out') dayOut += op.amount; // записи 'rep' — очки, не деньги
       }
     });
     var refreshMin = Math.max(1, Math.ceil((s.staffMarket.refreshAt - now) / 60000));
@@ -121,6 +122,7 @@ Game.screens.office = {
 
     function opRow(op){
       var isIn = op.cat === 'in';
+      var isRep = op.cat === 'rep';
       var time = new Date(op.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
       return `
         <div class="list-item">
@@ -128,7 +130,9 @@ Game.screens.office = {
             <div class="li-title" style="font-size:13px">${Game.esc(op.note)}</div>
             <div class="li-sub">${time}</div>
           </div>
-          <span class="tag ${isIn ? 'ok' : 'danger'}">${isIn ? '+' : '−'}${Game.fmt.money(op.amount)}</span>
+          ${isRep
+            ? `<span class="tag accent">${op.amount > 0 ? '+' : ''}${op.amount} реп.</span>`
+            : `<span class="tag ${isIn ? 'ok' : 'danger'}">${isIn ? '+' : '−'}${Game.fmt.money(op.amount)}</span>`}
         </div>`;
     }
 

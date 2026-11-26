@@ -27,6 +27,7 @@
       company: { name: '', named: false },
       contracts: { offers: [], active: null },
       licenses: {},
+      reputation: { points: 0, level: 0 },
       oplog: [],
       lastMaintAt: Date.now(),
       trips: [],
@@ -59,6 +60,9 @@
     if (!Array.isArray(out.contracts.offers)) out.contracts.offers = [];
     if (!(out.contracts.active && out.contracts.active.uid)) out.contracts.active = null;
     out.licenses = (st && st.licenses && typeof st.licenses === 'object' && !Array.isArray(st.licenses)) ? st.licenses : {};
+    out.reputation = Object.assign({}, d.reputation, (st && st.reputation) || {});
+    if (!isFinite(out.reputation.points) || out.reputation.points < 0) out.reputation.points = 0;
+    out.reputation.level = 0; // уровень всегда выводится из очков в E.repInfo()
     out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
     out.achievements = (st && st.achievements && typeof st.achievements === 'object' && !Array.isArray(st.achievements)) ? st.achievements : {};
     out.finance      = (st && st.finance && typeof st.finance === 'object' && !Array.isArray(st.finance)) ? st.finance : {};

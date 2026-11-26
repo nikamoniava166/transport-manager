@@ -33,7 +33,7 @@ Game.screens.market = {
       return `
         <div class="card ocrd">
           <div class="ocrd-top">
-            <div class="ocrd-name">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.urgent ? '<span class="tag warn">срочно ×1,4</span>' : ''}${flagTags}</div>
+            <div class="ocrd-name">📦 ${cargo.name} · ${Game.fmt.ton(o.weight)} ${o.vip ? `<span class="tag accent">${Game.ico('star')} VIP ×1,5</span>` : ''}${o.urgent ? '<span class="tag warn">срочно ×1,4</span>' : ''}${flagTags}</div>
             <div class="ocrd-pay">${Game.ico('coins')} ${Game.fmt.money(o.pay)}</div>
           </div>
           <div class="ocrd-sub">${Game.ico('map-pin')} ${from} → ${to} · ${o.km} км · ≈${min} мин · ${Game.ico('clock')} ${Math.max(1, Math.round((o.expiresAt - now) / 60000))} мин</div>

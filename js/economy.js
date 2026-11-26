@@ -591,7 +591,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       cargoId: cargo.id,
       from: a.id, to: b.id, km: km,
       weight: weight,
-      pay: E.orderPay(km, weight, cargo.mult, urgent),
+      pay: Math.round(E.orderPay(km, weight, cargo.mult, urgent) * E.repPayMult()), // репутация даёт премию к оплате
       urgent: urgent,
       flags: (cargo.flags || []).slice(),
       expiresAt: Date.now() + Game.rndInt(Game.data.orderLifeMin, Game.data.orderLifeMax) * 60000
@@ -606,9 +606,12 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     // завоз партиями: новая партия раз в 3–5 минут (метка времени restockAt; 0 — завоз прямо сейчас)
     if (s.market.restockAt && s.market.restockAt > now) return;
     var guard = 0;
+    // VIP-заказ: с уровня репутации 2 «Надёжный партнёр» ~1 завоз из 12 несёт VIP (⭐ ×1,5)
+    var vipRoll = E.repInfo().lvl >= Game.data.repVipFromLvl && Math.random() < 1 / Game.data.repVipChanceOneOf;
     while (s.market.orders.length < slots && guard++ < 20) {
       var o = E.generateOrder();
       if (!o) break;
+      if (vipRoll) { o.vip = true; o.pay = Math.round(o.pay * Game.data.repVipPayMult); vipRoll = false; }
       s.market.orders.push(o);
     }
     s.market.restockAt = now + Game.rndInt(Game.data.marketRestockMin, Game.data.marketRestockMax) * 60000;
@@ -720,7 +723,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     do { b = Game.pick(cities); } while (b.id === a.id);
     var km = Game.dist(a.id, b.id);
     var trips = Game.rndInt(3, 5);
-    var pay = E.orderPay(km, weight, cargo.mult, false);
+    var pay = Math.round(E.orderPay(km, weight, cargo.mult, false) * E.repPayMult()); // репутация даёт премию и контрактам
     var series = pay * trips;
     return {
       uid: Game.uid(),
@@ -733,7 +736,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       penalty: Math.max(500, Math.round(series * 0.2 / 100) * 100), // штраф за провал срока
       minPerTrip: Math.max(Game.data.minTripMin, Math.round(km / Game.data.kmPerMin)),
       deadline: Date.now() + trips * Game.rndInt(30, 45) * 60000,
-      expiresAt: Date.now() + Game.rndInt(10, 30) * 60000
+      expiresAt: Date.now() + Math.round(Game.rndInt(10, 30) * (1 + E.repInfo().lvl * Game.data.repContractLifeK)) * 60000 // выше репутация — офферы висят дольше
     };
   };
 
@@ -744,8 +747,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var now = Date.now();
     s.contracts.offers = (s.contracts.offers || []).filter(function(c){ return c.expiresAt > now; });
     if (s.contracts.active) { s.contracts.offers = []; return; }
+    var maxOffers = (E.repInfo().lvl >= Game.data.repContractMaxAtLvl) ? 3 : 2; // с «Надёжного партнёра» — до 3 офферов
     var guard = 0;
-    while (s.contracts.offers.length < 2 && guard++ < 8) {
+    while (s.contracts.offers.length < maxOffers && guard++ < 8) {
       var c = E.generateContractOffer();
       if (!c) break;
       s.contracts.offers.push(c);
@@ -799,6 +803,48 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       Game.toast('🎉 Уровень ' + after + '! Открыты новые возможности', 'ok');
       Game.haptic('level');
       if (Game.confetti) Game.confetti();
+    }
+  };
+
+  // ---------- репутация компании ----------
+  // Медленная «валюта качества»: уровень растёт от км, репутация — от того, КАК доставляешь.
+
+  E.repInfo = function(){
+    var s = Game.state;
+    var pts = Math.max(0, (s.reputation && s.reputation.points) || 0);
+    var L = Game.data.repLevels, names = Game.data.repLevelNames;
+    var lvl = 0;
+    for (var i = 0; i < L.length; i++) if (pts >= L[i]) lvl = i;
+    return {
+      pts: pts,
+      lvl: lvl,
+      name: names[lvl] || '—',
+      nextAt: (lvl + 1 < L.length) ? L[lvl + 1] : null,
+      payBonus: Math.round(lvl * Game.data.repPayBonusPerLvl * 1000) / 1000
+    };
+  };
+
+  // множитель оплаты заказов от репутации (1 … 1.12)
+  E.repPayMult = function(){ return 1 + E.repInfo().payBonus; };
+
+  // Изменение репутации. Обычные рейсовые +1/+2 не пишем в журнал (шум),
+  // заметные изменения (серия/поломка/срыв) — с пометкой. Смена уровня — тостом всегда.
+  E.addRep = function(delta, note){
+    var s = Game.state;
+    if (!s.reputation) s.reputation = { points: 0, level: 0 };
+    if (!delta) return;
+    var before = E.repInfo();
+    s.reputation.points = Math.max(0, Math.round((s.reputation.points + delta) * 10) / 10);
+    var after = E.repInfo();
+    if (Math.abs(delta) >= 5 && note) E.logOp('rep', delta, note);
+    if (Game.ui.ready && after.lvl !== before.lvl) {
+      if (after.lvl > before.lvl) {
+        Game.toast('🏅 Репутация: «' + after.name + '» — оплата заказов +' + Math.round(after.payBonus * 100) + '%', 'ok');
+        Game.haptic('level');
+      } else {
+        Game.toast('📉 Репутация упала: «' + after.name + '»', 'err');
+        Game.haptic('err');
+      }
     }
   };
 
@@ -860,10 +906,11 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         s.money += cc.bonus;
         s.stats.earned += cc.bonus;
         E.logOp('in', cc.bonus, 'Контракт выполнен: ' + cc.client);
+        E.addRep(Game.data.repSeriesBonus, 'Репутация +' + Game.data.repSeriesBonus + ': серия контракта выполнена: ' + cc.client); // полная серия: +10 репутации
         s.contracts.active = null;
         s.contracts.doneCount = (s.contracts.doneCount || 0) + 1;
         if (Game.ui.ready) {
-          Game.toast('🏆 Контракт «' + cc.client + '» выполнен · бонус ' + Game.fmt.money(cc.bonus), 'ok');
+          Game.toast('🏆 Контракт «' + cc.client + '» выполнен · бонус ' + Game.fmt.money(cc.bonus) + ' · +' + Game.data.repSeriesBonus + ' репутации', 'ok');
           Game.haptic('level');
           if (Game.confetti) Game.confetti();
         }
@@ -871,6 +918,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     }
     // опыт
     E.addXp(E.xpGain(o));
+    // репутация: +1 за рейс, +2 за дальний (>500 км) или контрактный; поломка в пути — штраф
+    E.addRep((o.km > Game.data.repLongKm || t.contractUid) ? Game.data.repLongTripPts : Game.data.repTripPts);
+    if (t.brk) E.addRep(-Game.data.repCrashPenalty, 'Репутация −' + Game.data.repCrashPenalty + ': поломка в пути');
     t.net = payout - t.fuel - t.advance - charged;
     Game.save();
   };
@@ -906,8 +956,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       }
       s.contracts.active = null;
       s.contracts.failed = (s.contracts.failed || 0) + 1;
+      E.addRep(-Game.data.repFailPenalty, 'Репутация −' + Game.data.repFailPenalty + ': контракт провален: ' + act.client);
       if (!silent && Game.ui.ready) {
-        Game.toast('❌ Контракт «' + act.client + '» провален' + (pen > 0 ? ' · штраф ' + Game.fmt.money(pen) : ''), 'err');
+        Game.toast('❌ Контракт «' + act.client + '» провален' + (pen > 0 ? ' · штраф ' + Game.fmt.money(pen) : '') + ' · −' + Game.data.repFailPenalty + ' репутации', 'err');
         Game.haptic('err');
       }
       Game.save();

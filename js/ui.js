@@ -214,6 +214,8 @@ Game.showCompany = function(mode){
   var st = s.stats || {};
   var boostLeft = (s.stars && s.stars.boostUntil > Date.now()) ? s.stars.boostUntil - Date.now() : 0;
   var myLvl = Game.levelInfo(s.xp).level;
+  var rep = Game.economy.repInfo();
+  var repPct = rep.nextAt ? Math.min(100, Math.round((rep.pts - Game.data.repLevels[rep.lvl]) / (rep.nextAt - Game.data.repLevels[rep.lvl]) * 100)) : 100;
   var licHtml = (Game.data.licenses || []).map(function(L){
     var owned = s.licenses && s.licenses[L.flag];
     var locked = L.lvl > myLvl;
@@ -272,6 +274,13 @@ Game.showCompany = function(mode){
                <div class="li-sub">пройдено по дорогам</div>
              </div>
            </div>
+           <div class="divider" style="margin:10px 0 8px"></div>
+           <div class="small muted" style="margin-bottom:4px">Репутация</div>
+           <div class="wear">
+             <div class="progress"><i style="width:${repPct}%;background:var(--ok)"></i></div>
+             <div class="val">«${rep.name}» · ${rep.pts} ${Game.plural(rep.pts, 'очко', 'очка', 'очков')}${rep.payBonus ? ' · оплата +' + Math.round(rep.payBonus * 100) + '%' : ''}</div>
+           </div>
+           ${rep.nextAt ? `<div class="small muted" style="margin-top:2px">до «${Game.data.repLevelNames[rep.lvl + 1]}»: ${rep.nextAt - rep.pts} · рейсы +1, дальние и контрактные +2, серия +10 · ДТП и срывы отнимают</div>` : '<div class="small muted" style="margin-top:2px">Максимальная репутация — вас знают на всех трассах</div>'}
            <div class="divider" style="margin:10px 0 8px"></div>
            <div class="small muted" style="margin-bottom:4px">Лицензии на категории грузов</div>
            ${licHtml}
