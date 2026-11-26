@@ -49,6 +49,7 @@
     out.staffMarket   = Object.assign({}, d.staffMarket,   (st && st.staffMarket)   || {});
     out.salon         = Object.assign({}, d.salon,         (st && st.salon)         || {});
     out.salon.list    = Array.isArray(out.salon.list) ? out.salon.list : [];
+    out.warehouse     = Object.assign({}, d.warehouse,      (st && st.warehouse)     || {});
     out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
     out.achievements = (st && st.achievements && typeof st.achievements === 'object' && !Array.isArray(st.achievements)) ? st.achievements : {};
     out.finance      = (st && st.finance && typeof st.finance === 'object' && !Array.isArray(st.finance)) ? st.finance : {};

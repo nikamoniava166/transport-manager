@@ -123,6 +123,7 @@ Game.screens.garage = {
     }
 
     var cap = E.garageCap();
+    var wh = s.warehouse || { parts: 0, tires: 0 };
     var gLvl = s.garageLvl || 0;
     var gCost = E.garageUpCost();
     var freePlaces = Math.max(0, cap - s.trucks.length);
@@ -138,6 +139,32 @@ Game.screens.garage = {
         ${gCost != null
           ? `<button class="btn" data-upggarage="1" ${s.money >= gCost ? '' : 'disabled'}>🏗️ Расширить (+2 места) · ${Game.fmt.money(gCost)}</button>`
           : '<div class="small muted center">Достигнут максимальный размер</div>'}
+      </div>
+      <div class="card">
+        <div class="card-title">📦 Склад</div>
+        <div class="list-item">
+          <div class="li-ico">🔩</div>
+          <div class="li-main">
+            <div class="li-title">Запчасти · ${wh.parts}</div>
+            <div class="li-sub">${Game.fmt.money(D.partPrice)} за штуку</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn secondary small" data-buyw="parts|1" ${s.money >= D.partPrice ? '' : 'disabled'}>×1</button>
+            <button class="btn secondary small" data-buyw="parts|5" ${s.money >= D.partPrice * 5 ? '' : 'disabled'}>×5</button>
+          </div>
+        </div>
+        <div class="list-item">
+          <div class="li-ico">🛞</div>
+          <div class="li-main">
+            <div class="li-title">Шины · ${wh.tires}</div>
+            <div class="li-sub">${Game.fmt.money(D.tirePrice)} за штуку</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn secondary small" data-buyw="tires|1" ${s.money >= D.tirePrice ? '' : 'disabled'}>×1</button>
+            <button class="btn secondary small" data-buyw="tires|5" ${s.money >= D.tirePrice * 5 ? '' : 'disabled'}>×5</button>
+          </div>
+        </div>
+        <div class="small muted">Расходуются на ремонт техники и замену шин</div>
       </div>
       ${s.trucks.map(truckCard).join('')}
       <div class="card">
@@ -177,6 +204,15 @@ Game.screens.garage = {
     root.querySelectorAll('[data-upggarage]').forEach(function(b){
       b.onclick = function(){
         var r = E.upgradeGarage();
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-buyw]').forEach(function(b){
+      b.onclick = function(){
+        var p = b.getAttribute('data-buyw').split('|');
+        var r = p[0] === 'parts' ? E.buyParts(+p[1]) : E.buyTires(+p[1]);
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);

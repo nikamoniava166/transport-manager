@@ -71,6 +71,32 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return { ok: true, msg: '🔧 ' + Game.truck(tr.tid).name + ' как новая · −' + Game.fmt.money(cost) };
   };
 
+  // ---------- склад запчастей и шин ----------
+
+  E.buyParts = function(n){
+    var s = Game.state;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0 };
+    var cost = Game.data.partPrice * n;
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    s.money -= cost; s.stats.spent += cost;
+    s.warehouse.parts += n;
+    E.logOp('out', cost, 'Склад: запчасти ×' + n);
+    Game.save();
+    return { ok: true, msg: '📦 Запчасти ×' + n + ' на складе · −' + Game.fmt.money(cost) };
+  };
+
+  E.buyTires = function(n){
+    var s = Game.state;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0 };
+    var cost = Game.data.tirePrice * n;
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    s.money -= cost; s.stats.spent += cost;
+    s.warehouse.tires += n;
+    E.logOp('out', cost, 'Склад: шины ×' + n);
+    Game.save();
+    return { ok: true, msg: '🛞 Шины ×' + n + ' на складе · −' + Game.fmt.money(cost) };
+  };
+
   E.upgradeCost = function(tr, upId){
     var T = Game.truck(tr.tid);
     var U = Game.data.upgrades.find(function(u){ return u.id === upId; });
