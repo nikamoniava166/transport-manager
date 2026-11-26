@@ -23,7 +23,7 @@
       ],
       staff: [],
       staffMarket: { list: [], refreshAt: 0 },
-      warehouse: { parts: 2, tires: 4 },
+      warehouse: { parts: 2, tires: 4, kits: 0 },
       company: { name: '', named: false },
       contracts: { offers: [], active: null },
       licenses: {},
@@ -79,12 +79,24 @@
     }
     delete out.driversMarket;
     out.staff     = Array.isArray(out.staff)     ? out.staff     : [];
+    out.staff.forEach(function(p){ if (p.busyUntil == null) p.busyUntil = 0; }); // занятость механиков (сервис v4)
     out.oplog     = Array.isArray(out.oplog)     ? out.oplog     : [];
     out.lastMaintAt = out.lastMaintAt || Date.now();
     out.trucks   = Array.isArray(out.trucks)   ? out.trucks   : d.trucks;
     // пробег (появился вместе с салоном б/у) — у старых машин копится с нуля;
     // шины (шаг «Поломки и шины») у старых машин тоже стартуют с нуля
-    out.trucks.forEach(function(t){ if (t.km == null) t.km = 0; if (t.tires == null) t.tires = 0; });
+    out.trucks.forEach(function(t){
+      if (t.km == null) t.km = 0;
+      if (t.tires == null) t.tires = 0;
+      // сервис v4: узлы, двигатель, календарный возраст, счётчик ТО
+      if (!t.nodes) t.nodes = {};
+      Game.data.nodes.forEach(function(N){ if (t.nodes[N.id] == null) t.nodes[N.id] = 0; });
+      if (t.engine == null) t.engine = Math.min(100, Math.round(t.wear || 0)); // старт — из общего износа
+      if (!t.boughtAt) t.boughtAt = Date.now();
+      if (!t.ageWearAt) t.ageWearAt = t.boughtAt;
+      if (t.serviceKm == null) t.serviceKm = 0;
+      if (t.engineBroken == null) t.engineBroken = false;
+    });
     out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
     out.drivers  = Array.isArray(out.drivers)  ? out.drivers  : d.drivers;
     // усталость (шаг «Водители») — у старых водителей нулевая; закрепляем за машинами один к одному

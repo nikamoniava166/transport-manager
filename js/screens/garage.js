@@ -11,6 +11,57 @@ Game.screens.garage = {
     function wearColor(w){ return w < 40 ? 'var(--ok)' : w < 70 ? 'var(--warn)' : 'var(--danger)'; }
     function flagLabel(f){ return Game.flagLabel(f, true); }
 
+    // краткая строка сервиса в карточке машины: ТО и двигатель
+    function serviceBrief(tr){
+      var left = Game.data.serviceIntervalKm - (tr.serviceKm || 0);
+      var note = left > 0 ? 'ТО через ' + Game.fmt.km(left) : '⚠ ТО просрочено на ' + Game.fmt.km(-left);
+      if (tr.engineBroken) note += ' · ⚠ двигатель сломан';
+      return note + ' · двигатель ' + Math.round(tr.engine || 0) + '%';
+    }
+
+    // панель обслуживания: узлы, двигатель, ТО
+    function servicePanel(tr){
+      var T = Game.truck(tr.tid);
+      var eff = E.effTruck(tr);
+      var busy = E.isBusy(tr.uid);
+      var wh = s.warehouse || { parts: 0, tires: 0, kits: 0 };
+      var svcCost = E.serviceCost(tr);
+      var canSvc = !busy && (wh.parts >= (Game.data.serviceParts || 2)) && s.money >= svcCost;
+      var left = Game.data.serviceIntervalKm - (tr.serviceKm || 0);
+      var svcNote = left > 0 ? 'до ТО ' + Game.fmt.km(left) : '⚠ ТО просрочено на ' + Game.fmt.km(-left);
+      var mechFree = E.freeMechanic().length > 0;
+      var mechNote = mechFree ? '' : '<div class="small muted" style="margin:6px 0 2px">Нет свободного механика — замены узлов и капремонт делают только они (найм в «Офисе»)</div>';
+      var rows = Game.data.nodes.map(function(N){
+        if (N.noElec && eff.elec) {
+          return '<div class="nrow"><span class="nname">' + N.name + '</span><span class="nval muted">⚡ не требуется</span></div>';
+        }
+        var w = (tr.nodes && tr.nodes[N.id]) || 0;
+        var cost = E.nodeCost(tr, N);
+        var can = !busy && w >= 5 && mechFree && wh.parts >= 1 && s.money >= cost;
+        return `<div class="nrow">
+          <span class="nname">${N.name}</span>
+          <span class="nbar"><i style="width:${Math.min(100, w)}%;background:${wearColor(w)}"></i></span>
+          <span class="nval">${Math.round(w)}%</span>
+          <button class="btn mini" data-swap="${tr.uid}|${N.id}" ${can ? '' : 'disabled'}>${w >= 5 ? Game.fmt.money(cost) : '—'}</button>
+        </div>`;
+      }).join('');
+      var eng = Math.round(tr.engine || 0);
+      var engCost = Math.max(100, Math.round(T.price * Game.data.engineRepairMoneyK / 100) * 100);
+      var canEng = !busy && mechFree && (wh.kits || 0) >= 1 && s.money >= engCost && (tr.engineBroken || eng >= 5);
+      var engRow = `<div class="nrow">
+        <span class="nname">Двигатель</span>
+        <span class="nbar"><i style="width:${Math.min(100, eng)}%;background:${wearColor(eng)}"></i></span>
+        <span class="nval">${eng}%</span>
+        <button class="btn mini" data-engrep="${tr.uid}" ${canEng ? '' : 'disabled'}>${tr.engineBroken ? 'Капремонт!' : Game.fmt.money(engCost)}</button>
+      </div>` + ((wh.kits || 0) < 1 ? '<div class="small muted" style="margin:-2px 0 0 6px">для капремонта нужен набор со склада</div>' : '');
+      return `<div class="panel">
+        <div class="small"><b>${Game.ico('wrench')} Обслуживание</b> · ${svcNote}</div>
+        ${mechNote}
+        <div class="ngrid">${rows}${engRow}</div>
+        <button class="btn secondary small" data-service="${tr.uid}" ${canSvc ? '' : 'disabled'}>${Game.ico('cog')} ТО · запчасти ×${Game.data.serviceParts} + ${Game.fmt.money(svcCost)}</button>
+      </div>`;
+    }
+
     function upPanel(tr){
       var rows = D.upgrades.map(function(U){
         var lvl = (tr.up[U.id] || 0);
@@ -83,7 +134,7 @@ Game.screens.garage = {
       var whTires = (s.warehouse && s.warehouse.tires) || 0;
       var canTires = !busy && tireW >= 5 && whTires >= D.tireSetSize;
       var tireNote = tireW >= D.tireMaxWear ? ' — на рейс нельзя' : tireW >= D.tireRiskWear ? ' · риск поломки' : '';
-      var sellPrice = E.sellPrice(T.price, tr.wear);
+      var sellPrice = E.sellPrice(T.price, tr.wear, { ageWeeks: E.truckAgeWeeks(tr), engine: tr.engine || 0, nodesAvg: E.nodesAvg(tr) });
       var canSell = !busy && s.trucks.length > 1;
       var panel = Game.ui.garageUpUid === tr.uid ? upPanel(tr) : '';
       var drvBlock = '';
@@ -113,15 +164,18 @@ Game.screens.garage = {
             <div class="progress"><i style="width:${Math.min(100, tireW)}%;background:${wearColor(tireW)}"></i></div>
             <div class="val">шины ${Math.round(tireW)}%${tireNote}</div>
           </div>
+          <div class="li-sub">${Game.ico('wrench')} ${serviceBrief(tr)}</div>
           ${trailerRow(tr)}
           ${panel}
+          ${Game.ui.garageSvcUid === tr.uid ? servicePanel(tr) : ''}
           <div class="row">
             <button class="btn secondary" data-repair="${tr.uid}" ${needRepair ? '' : 'disabled'}>${Game.ico('wrench')} Ремонт${tr.wear > 0 && !busy ? ' · ' + Game.fmt.money(repairCost) : ''}</button>
             <button class="btn secondary" data-upg="${tr.uid}">${Game.ico('arrow-up')} Апгрейды</button>
           </div>
           <div class="row" style="margin-top:6px">
             <button class="btn secondary small" data-tires="${tr.uid}" ${canTires ? '' : 'disabled'}>${Game.ico('circle-dot')} Шины · ${D.tireSetSize} шт</button>
-            <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? Game.ico('tag') + ' Продать · ' + Game.fmt.money(sellPrice) : Game.ico('tag') + ' Продать (последняя)'}</button>
+            <button class="btn secondary small" data-svc="${tr.uid}">${Game.ico('wrench')} Сервис</button>
+            <button class="btn secondary small" data-sell="${tr.uid}|${sellPrice}" ${canSell ? '' : 'disabled'}>${s.trucks.length > 1 ? Game.ico('tag') + ' ' + Game.fmt.money(sellPrice) : Game.ico('tag') + ' Продать'}</button>
           </div>
           <div class="row" style="margin-top:6px">${drvBlock}</div>
         </div>`;
@@ -188,7 +242,17 @@ Game.screens.garage = {
             <button class="btn secondary small" data-buyw="tires|5" ${s.money >= D.tirePrice * 5 ? '' : 'disabled'}>×5</button>
           </div>
         </div>
-        <div class="small muted">Расходуются на ремонт техники и замену шин</div>
+        <div class="list-item">
+          <div class="li-ico">${Game.ico('package')}</div>
+          <div class="li-main">
+            <div class="li-title">Наборы для капремонта · ${wh.kits || 0}</div>
+            <div class="li-sub">${Game.fmt.money(D.engineKitPrice)} за штуку · ремонт двигателя</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn secondary small" data-buyw="kits|1" ${s.money >= D.engineKitPrice ? '' : 'disabled'}>×1</button>
+          </div>
+        </div>
+        <div class="small muted">Расходуются на ремонт техники, замену шин и ТО; наборы — на капремонт двигателя</div>
       </div>
       ${s.trucks.map(truckCard).join('')}
       <div class="card">
@@ -211,6 +275,39 @@ Game.screens.garage = {
     root.querySelectorAll('[data-tires]').forEach(function(b){
       b.onclick = function(){
         var r = E.replaceTires(+b.getAttribute('data-tires'));
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-svc]').forEach(function(b){
+      b.onclick = function(){
+        Game.haptic('tap');
+        var uid = +b.getAttribute('data-svc');
+        Game.ui.garageSvcUid = Game.ui.garageSvcUid === uid ? null : uid;
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-service]').forEach(function(b){
+      b.onclick = function(){
+        var r = E.serviceTruck(+b.getAttribute('data-service'));
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-swap]').forEach(function(b){
+      b.onclick = function(){
+        var p = b.getAttribute('data-swap').split('|');
+        var r = E.swapNode(+p[0], p[1]);
+        if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
+        else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
+        Game.navigate('garage', true);
+      };
+    });
+    root.querySelectorAll('[data-engrep]').forEach(function(b){
+      b.onclick = function(){
+        var r = E.repairEngine(+b.getAttribute('data-engrep'));
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);
@@ -244,7 +341,7 @@ Game.screens.garage = {
     root.querySelectorAll('[data-buyw]').forEach(function(b){
       b.onclick = function(){
         var p = b.getAttribute('data-buyw').split('|');
-        var r = p[0] === 'parts' ? E.buyParts(+p[1]) : E.buyTires(+p[1]);
+        var r = p[0] === 'parts' ? E.buyParts(+p[1]) : p[0] === 'kits' ? E.buyKit() : E.buyTires(+p[1]);
         if (r.ok) { Game.haptic('ok'); Game.toast(r.msg, 'ok'); }
         else { Game.haptic('err'); Game.toast(r.msg, 'err'); }
         Game.navigate('garage', true);

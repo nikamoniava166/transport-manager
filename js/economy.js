@@ -13,7 +13,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     goodclient: { pay: 0.10 },
     police:     { fine: [500, 2000] },
     bonusload:  { pay: 0.30 },
-    breakdown:  {}
+    breakdown:  {},
+    accident:   { time: 0.3 },  // ДТП: изношенные колодки; штраф уже задан в событии
+    enginefail: { time: 0.5 }   // поломка двигателя: машина не выйдет на рейс до капремонта
   };
 
   // ---------- грузовики ----------
@@ -56,6 +58,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (!tr || !dr) return 'Выберите машину и водителя';
     if (E.isBusy(tr.uid)) return 'Машина уже в рейсе';
     if ((tr.tires || 0) >= Game.data.tireMaxWear) return 'Шины изношены — замените комплект в автопарке';
+    if (tr.engineBroken) return 'Двигатель сломан — нужен капремонт у механика';
     if (E.driverBusy(dr.uid)) return 'Водитель уже в рейсе';
     if (dr.restUntil > now) return 'Водитель отдыхает';
     if ((dr.fatigue || 0) >= 100) return 'Водитель слишком устал — отправьте на отдых';
@@ -105,6 +108,151 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     E.logOp('out', 0, 'Замена шин: ' + Game.truck(tr.tid).name + ' · шины ×' + need);
     Game.save();
     return { ok: true, msg: '🛞 Комплект шин заменён · −' + need + ' со склада' };
+  };
+
+  // ---------- сервис v4: плановое ТО, узлы, двигатель ----------
+
+  // Коэффициент класса машины для цен узлов и штрафов ДТП
+  E.classK = function(tr){
+    var T = Game.truck(tr.tid);
+    return Game.data.nodePriceBase + (T ? T.price : 0) / Game.data.nodePriceDiv;
+  };
+
+  E.nodeCost = function(tr, N){
+    return Math.max(100, Math.round(N.price * E.classK(tr) / 100) * 100);
+  };
+
+  // Свободный механик (не занят работой)
+  E.freeMechanic = function(){
+    return E.staffOf('mechanic').filter(function(m){ return (m.busyUntil || 0) <= Date.now(); });
+  };
+
+  // Возраст машины в неделях (календарный, с момента покупки)
+  E.truckAgeWeeks = function(tr){
+    return Math.max(0, (Date.now() - (tr.boughtAt || Date.now())) / (7 * 86400000));
+  };
+
+  // Средний износ узлов (у электро «свечи» не учитываются)
+  E.nodesAvg = function(tr){
+    var T = Game.truck(tr.tid);
+    var elec = !!(T && T.elec);
+    var sum = 0, n = 0;
+    Game.data.nodes.forEach(function(N){
+      if (N.noElec && elec) return;
+      sum += (tr.nodes && tr.nodes[N.id]) || 0; n++;
+    });
+    return n ? sum / n : 0;
+  };
+
+  E.serviceCost = function(tr){
+    var T = Game.truck(tr.tid);
+    return Math.max(Game.data.serviceMoneyMin, Math.round((T ? T.price : 0) * Game.data.serviceMoneyK / 100) * 100);
+  };
+
+  // Плановое ТО: сбрасывает счётчик км, тратит запчасти со склада и деньги
+  E.serviceTruck = function(truckUid){
+    var s = Game.state;
+    var tr = null;
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!tr) return { ok: false, msg: 'Машина не найдена' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    var needParts = Game.data.serviceParts || 2;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0, kits: 0 };
+    if (s.warehouse.parts < needParts) return { ok: false, msg: 'Нужны запчасти: ' + needParts + ' шт — купите на «Автопарке» → «Склад»' };
+    var cost = E.serviceCost(tr);
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    s.money -= cost; s.stats.spent += cost;
+    s.warehouse.parts -= needParts;
+    tr.serviceKm = 0;
+    E.logOp('out', cost, 'ТО: ' + Game.truck(tr.tid).name + ' №' + tr.uid + ' · запчасти ×' + needParts);
+    Game.save();
+    return { ok: true, msg: '🧰 ТО проведено · −' + Game.fmt.money(cost) + ' · запчасти ×' + needParts };
+  };
+
+  // Замена узла: 1 запчасть + деньги; механик занят 3–5 минут (по навыку),
+  // узел восстанавливается по завершении работы (finishJobs)
+  E.swapNode = function(truckUid, nodeId){
+    var s = Game.state;
+    var N = Game.data.nodes.find(function(x){ return x.id === nodeId; });
+    if (!N) return { ok: false, msg: 'Узел не найден' };
+    var tr = null;
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!tr) return { ok: false, msg: 'Машина не найдена' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    var w = (tr.nodes && tr.nodes[nodeId]) || 0;
+    if (w < 5) return { ok: false, msg: N.name + ' почти новые — замена не нужна' };
+    var mechs = E.freeMechanic();
+    if (!mechs.length) return { ok: false, msg: 'Нет свободного механика — замены делают только они' };
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0, kits: 0 };
+    if (s.warehouse.parts < 1) return { ok: false, msg: 'Нужна запчасть — купите на «Автопарке» → «Склад»' };
+    var cost = E.nodeCost(tr, N);
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    var mech = mechs[0];
+    var minutes = Math.max(Game.data.swapMinFloor, Game.data.swapMinBase - Math.floor(mech.skill / 3));
+    s.money -= cost; s.stats.spent += cost;
+    s.warehouse.parts -= 1;
+    mech.busyUntil = Date.now() + minutes * 60000;
+    mech.busyNote = 'Замена: ' + N.name.toLowerCase() + ' (' + Game.truck(tr.tid).name + ' №' + tr.uid + ')';
+    mech.busyJob = { type: 'node', truckUid: truckUid, node: nodeId };
+    E.logOp('out', cost, 'Замена: ' + N.name.toLowerCase() + ' — ' + Game.truck(tr.tid).name + ' №' + tr.uid + ' · ' + mech.name + ', ~' + minutes + ' мин');
+    Game.save();
+    return { ok: true, msg: '🔩 ' + mech.name + ' меняет «' + N.name.toLowerCase() + '» · ~' + minutes + ' мин · −' + Game.fmt.money(cost) };
+  };
+
+  // Капремонт двигателя: набор со склада + деньги, механик занят 15 минут;
+  // по завершении работы двигатель восстанавливается и машина снова едет
+  E.repairEngine = function(truckUid){
+    var s = Game.state;
+    var tr = null;
+    s.trucks.forEach(function(x){ if (x.uid === truckUid) tr = x; });
+    if (!tr) return { ok: false, msg: 'Машина не найдена' };
+    if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
+    if (!tr.engineBroken && (tr.engine || 0) < 5) return { ok: false, msg: 'Двигатель в порядке — капремонт не нужен' };
+    var mechs = E.freeMechanic();
+    if (!mechs.length) return { ok: false, msg: 'Нет свободного механика — капремонт делают только они' };
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0, kits: 0 };
+    if ((s.warehouse.kits || 0) < 1) return { ok: false, msg: 'Нужен «Набор для капремонта» — купите на «Автопарке» → «Склад»' };
+    var cost = Math.max(100, Math.round(Game.truck(tr.tid).price * Game.data.engineRepairMoneyK / 100) * 100);
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    var mech = mechs[0];
+    s.money -= cost; s.stats.spent += cost;
+    s.warehouse.kits -= 1;
+    mech.busyUntil = Date.now() + Game.data.engineRepairMin * 60000;
+    mech.busyNote = 'Капремонт двигателя (' + Game.truck(tr.tid).name + ' №' + tr.uid + ')';
+    mech.busyJob = { type: 'engine', truckUid: truckUid };
+    E.logOp('out', cost, 'Капремонт двигателя: ' + Game.truck(tr.tid).name + ' №' + tr.uid + ' · набор ×1');
+    Game.save();
+    return { ok: true, msg: '🛠 ' + mech.name + ' делает капремонт двигателя · ~' + Game.data.engineRepairMin + ' мин · набор со склада' };
+  };
+
+  // Закупка набора для капремонта
+  E.buyKit = function(){
+    var s = Game.state;
+    if (!s.warehouse) s.warehouse = { parts: 0, tires: 0, kits: 0 };
+    var cost = Game.data.engineKitPrice;
+    if (s.money < cost) return { ok: false, msg: 'Не хватает: нужно ' + Game.fmt.money(cost) };
+    s.money -= cost; s.stats.spent += cost;
+    s.warehouse.kits = (s.warehouse.kits || 0) + 1;
+    E.logOp('out', cost, 'Склад: набор для капремонта');
+    Game.save();
+    return { ok: true, msg: '📦 Набор для капремонта на складе · −' + Game.fmt.money(cost) };
+  };
+
+  // Окончание работ механика: узел/двигатель восстанавливаются по завершении
+  E.finishJobs = function(now){
+    var s = Game.state;
+    s.staff.forEach(function(m){
+      if (m.role !== 'mechanic' || !m.busyJob) return;
+      if ((m.busyUntil || 0) > now) return;
+      var j = m.busyJob;
+      var tr = null;
+      s.trucks.forEach(function(x){ if (x.uid === j.truckUid) tr = x; });
+      if (tr) {
+        if (j.type === 'node') { if (tr.nodes) tr.nodes[j.node] = 0; }
+        else { tr.engine = 0; tr.engineBroken = false; }
+      }
+      m.busyJob = null;
+    });
   };
 
   // ---------- склад запчастей и шин ----------
@@ -289,9 +437,11 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
   // ---------- продажа с рук (машины и прицепы) ----------
 
-  // Цена скупщика: цена нового × (0,5 − износ × 0,003), но не ниже 10 %; округление до сотен
-  E.sellPrice = function(basePrice, wear){
+  // Цена скупщика: цена нового × (0,5 − износ × 0,003), но не ниже 10 %; округление до сотен.
+  // Для машин дополнительно учитываются возраст, износ двигателя и узлов (extra, сервис v4)
+  E.sellPrice = function(basePrice, wear, extra){
     var k = 0.5 - (wear || 0) * 0.003;
+    if (extra) k -= (extra.ageWeeks || 0) * Game.data.sellAgeK + (extra.engine || 0) * Game.data.sellEngineK + (extra.nodesAvg || 0) * Game.data.sellNodesK;
     if (k < 0.1) k = 0.1;
     return Math.max(100, Math.round(basePrice * k / 100) * 100);
   };
@@ -304,7 +454,9 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     if (E.isBusy(truckUid)) return { ok: false, msg: 'Машина в рейсе — дождитесь возвращения' };
     if (s.trucks.length <= 1) return { ok: false, msg: 'Нельзя продать последнюю машину' };
     var T = Game.truck(tr.tid);
-    var price = E.sellPrice(T.price, tr.wear);
+    var price = E.sellPrice(T.price, tr.wear, { ageWeeks: E.truckAgeWeeks(tr), engine: tr.engine || 0, nodesAvg: E.nodesAvg(tr) });
+    // незавершённая работа механика над этой машиной отменяется
+    s.staff.forEach(function(m){ if (m.busyJob && m.busyJob.truckUid === truckUid) m.busyJob = null; });
     var trailer = E.trailerOf(truckUid);
     if (trailer) trailer.attachedTo = null; // прицеп не продаётся вместе с машиной — остаётся на складе
     // закреплённый водитель остаётся без машины
@@ -334,10 +486,12 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
   // ---------- салон б/у грузовиков ----------
 
   // Цена б/у машины: доля от цены нового зависит от износа,
-  // уже установленные апгрейды добавляют остаточную стоимость
-  E.usedPrice = function(T, wear, up){
+  // уже установленные апгрейды добавляют остаточную стоимость;
+  // возраст и состояние узлов/двигателя (extra) снижают цену (сервис v4)
+  E.usedPrice = function(T, wear, up, extra){
     var D = Game.data.salon;
     var share = Math.max(D.priceMin, D.priceBase - (wear || 0) * D.wearK);
+    if (extra) share -= (extra.ageWeeks || 0) * Game.data.sellAgeK + (extra.engine || 0) * Game.data.sellEngineK + (extra.nodesAvg || 0) * Game.data.sellNodesK;
     var base = T.price * share;
     var residual = 0;
     Game.data.upgrades.forEach(function(U){
@@ -361,11 +515,31 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     Game.data.upgrades.forEach(function(U){
       if (Math.random() < D.upChance) up[U.id] = Game.rndInt(1, U.levels);
     });
-    var price = E.usedPrice(T, wear, up);
     var deal = Math.random() < D.dealChance;
-    if (deal) price = Math.max(1000, Math.round(price * (1 - D.dealDisc) / 100) * 100);
     var km = Math.round(wear * Game.rnd(D.kmPerWear[0], D.kmPerWear[1]) / 500) * 500;
-    return { uid: Game.uid(), tid: T.id, wear: wear, up: up, km: km, price: price, deal: deal };
+    // возраст и состояние узлов/двигателя (сервис v4): у б/у всё это есть уже при покупке;
+    // предыдущий владелец что-то менял, поэтому узлы — не полный км-расчёт
+    var ageWeeks = Game.rndInt(Game.data.usedAgeMin, Game.data.usedAgeMax);
+    var elec = !!T.elec;
+    var nodes = {};
+    Game.data.nodes.forEach(function(N){
+      if (N.noElec && elec) { nodes[N.id] = 0; return; }
+      nodes[N.id] = Math.min(95, Math.round(wear * Game.rnd(0.5, 1.2) * 10) / 10);
+    });
+    var nodesSum = 0, nodesCnt = 0;
+    Game.data.nodes.forEach(function(N){
+      if (N.noElec && elec) return;
+      nodesSum += nodes[N.id]; nodesCnt++;
+    });
+    var engine = Math.min(85, Math.round(km / Game.data.engineWearKmK * Game.rnd(0.35, 0.7)));
+    var price = E.usedPrice(T, wear, up, { ageWeeks: ageWeeks, engine: engine, nodesAvg: nodesCnt ? nodesSum / nodesCnt : 0 });
+    if (deal) price = Math.max(1000, Math.round(price * (1 - D.dealDisc) / 100) * 100);
+    return {
+      uid: Game.uid(), tid: T.id, wear: wear, up: up, km: km, price: price, deal: deal,
+      ageWeeks: ageWeeks, engine: engine, nodes: nodes,
+      serviceKm: Game.rndInt(2000, 12000),
+      boughtAt: Date.now() - ageWeeks * 7 * 86400000
+    };
   };
 
   // Завоз по таймеру (refreshAt — метка времени, офлайн тоже работает).
@@ -400,9 +574,14 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var up = {};
     Game.data.upgrades.forEach(function(U){ up[U.id] = (offer.up && offer.up[U.id]) || 0; });
     s.money -= offer.price; s.stats.spent += offer.price;
-    s.trucks.push({ uid: Game.uid(), tid: offer.tid, wear: offer.wear, up: up, km: offer.km });
+    s.trucks.push({
+      uid: Game.uid(), tid: offer.tid, wear: offer.wear, up: up, km: offer.km,
+      boughtAt: offer.boughtAt || Date.now(), ageWearAt: Date.now(),
+      engine: offer.engine || 0, nodes: offer.nodes || {},
+      serviceKm: offer.serviceKm || 0, engineBroken: false
+    });
     s.salon.list = s.salon.list.filter(function(o){ return o.uid !== offerUid; });
-    E.logOp('out', offer.price, 'Покупка б/у: ' + T.name + ' (износ ' + offer.wear + '%, пробег ' + Game.fmt.km(offer.km) + ')');
+    E.logOp('out', offer.price, 'Покупка б/у: ' + T.name + ' (износ ' + offer.wear + '%, пробег ' + Game.fmt.km(offer.km) + (offer.ageWeeks != null ? ', возраст ~' + offer.ageWeeks + ' нед' : '') + ')');
     Game.save();
     return { ok: true, msg: '🎉 ' + T.name + ' с пробегом — ваш! Загляните в автопарк' };
   };
@@ -452,6 +631,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       case 'police':     return '👮 ДПС: штраф ' + Game.fmt.money(ev.fine);
       case 'bonusload':  return '📦 Попутный груз: +30% к оплате';
       case 'breakdown':  return '⚡ Поломка! Рейс задержится';
+      case 'accident':   return '🚗 ДТП! Штраф ' + Game.fmt.money(ev.fine || 0);
+      case 'enginefail': return '🛠 Поломка двигателя! Нужен капремонт';
     }
     return '';
   };
@@ -464,7 +645,29 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     // «лысые» шины добавляют риск поломки (до +6 % при 100 %)
     var tireWear = tr.tires || 0;
     if (tireWear > Game.data.tireRiskWear) brkChance += (tireWear - Game.data.tireRiskWear) / 100 * 0.3;
+    // просроченное ТО добавляет риск (максимум +6 %)
+    var overdue = Math.max(0, (tr.serviceKm || 0) / Game.data.serviceIntervalKm - 1);
+    brkChance += Math.min(Game.data.serviceOverdueRiskMax, overdue * Game.data.serviceOverdueRisk);
+    // изношенные узлы добавляют риск (+0.8 % за каждый выше 80 %)
+    var elec = !!eff.elec;
+    Game.data.nodes.forEach(function(N){
+      if (N.noElec && elec) return;
+      if (((tr.nodes && tr.nodes[N.id]) || 0) > Game.data.nodeRiskFrom) brkChance += Game.data.nodeRiskEach;
+    });
     if (Math.random() < brkChance) events.push({ type: 'breakdown', atFrac: Game.rnd(0.3, 0.8) });
+    // ДТП: изношенные колодки; штраф зависит от класса машины
+    var brakesW = (tr.nodes && tr.nodes.brakes) || 0;
+    if (brakesW > Game.data.accidentFrom && Math.random() < (brakesW - Game.data.accidentFrom) / 100 * Game.data.accidentChance) {
+      events.push({
+        type: 'accident', atFrac: Game.rnd(0.3, 0.9),
+        fine: Math.round(Game.rndInt(Game.data.accidentFineBase[0], Game.data.accidentFineBase[1]) * E.classK(tr) / 100) * 100
+      });
+    }
+    // поломка двигателя: редкая, только у изношенного двигателя
+    var engW = tr.engine || 0;
+    if (engW >= Game.data.engineBreakFrom && Math.random() < (engW - Game.data.engineBreakFrom) / 100 * Game.data.engineBreakChance) {
+      events.push({ type: 'enginefail', atFrac: Game.rnd(0.4, 0.9) });
+    }
     // уставший водитель ошибается чаще
     var fat = driver ? Math.min(100, driver.fatigue || 0) : 0;
     if (fat > Game.data.fatigueRiskFrom) brkChance += (fat - Game.data.fatigueRiskFrom) / 100 * 0.25;
@@ -636,13 +839,15 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var fat = Math.min(100, dr.fatigue || 0);
     var minutes = E.tripMinutes(orderLike.km, urgent, eff.speed, dr.skills.speed * (1 - fat / 200));
     var duration = minutes * 60000;
-    var extraTime = 0, extraPay = 0, fines = 0, brk = false;
+    var extraTime = 0, extraPay = 0, fines = 0, brk = false, engFail = false, acc = false;
     events.forEach(function(ev){
       var d = EVDEF[ev.type];
       if (d.time) extraTime += d.time;
       if (d.pay) extraPay += Math.round(orderLike.pay * d.pay);
-      if (d.fine) { var f = Game.rndInt(d.fine[0], d.fine[1]); ev.fine = f; fines += f; }
+      if (d.fine) { var f = (ev.fine != null) ? ev.fine : Game.rndInt(d.fine[0], d.fine[1]); ev.fine = f; fines += f; }
       if (ev.type === 'breakdown') { brk = true; extraTime += 0.3; }
+      if (ev.type === 'accident') acc = true;
+      if (ev.type === 'enginefail') engFail = true;
     });
     duration = Math.round(duration * (1 + extraTime));
 
@@ -663,7 +868,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         return { type: ev.type, at: Math.round(ev.atFrac * duration), fine: ev.fine || 0, seen: false };
       }),
       payFinal: Math.max(0, orderLike.pay + extraPay - fines),
-      fuel: fuel, advance: advance, brk: brk
+      fuel: fuel, advance: advance, brk: brk, engineFail: engFail, accident: acc
     };
     s.trips.push(trip);
     return { ok: true, trip: trip };
@@ -893,6 +1098,46 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         var trailerWear = wearAdd * 0.8 * (TT.wearK || 1);
         trailer.wear = Math.min(100, Math.round((trailer.wear + trailerWear) * 10) / 10);
       }
+      // сервис v4: счётчик ТО, износ двигателя и узлов, последствия ДТП и поломок
+      var T = Game.truck(tr.tid);
+      var elec = !!(T && T.elec);
+      tr.serviceKm = (tr.serviceKm || 0) + o.km;
+      tr.engine = Math.min(100, Math.round(((tr.engine || 0) + o.km / Game.data.engineWearKmK) * 10) / 10);
+      if (tr.nodes) {
+        Game.data.nodes.forEach(function(N){
+          if (N.noElec && elec) return;
+          var add = o.km / N.kmPerPct;
+          if (N.engineK) add *= 1 + (tr.engine || 0) / 100;
+          if (N.elecK && elec) add *= N.elecK;
+          tr.nodes[N.id] = Math.min(100, Math.round(((tr.nodes[N.id] || 0) + add) * 10) / 10);
+        });
+        // стёртые колодки ускоряют износ шин
+        var brW = tr.nodes.brakes || 0;
+        if (brW > Game.data.accidentFrom) {
+          tr.tires = Math.min(Game.data.tireMaxWear, Math.round((tr.tires + o.km / Game.data.tireWearKmK * (brW - Game.data.accidentFrom) / Game.data.brakeTireK) * 10) / 10);
+        }
+        // поломка в пути бьёт по случайному узлу
+        if (t.brk) {
+          var ids = [];
+          Game.data.nodes.forEach(function(N){ if (!(N.noElec && elec)) ids.push(N.id); });
+          if (ids.length) {
+            var hit = Game.pick(ids);
+            tr.nodes[hit] = Math.min(100, Math.round(((tr.nodes[hit] || 0) + Game.data.breakNodeHit) * 10) / 10);
+          }
+        }
+        // ДТП: шины и колодки страдают, репутация падает
+        if (t.accident) {
+          tr.tires = Math.min(Game.data.tireMaxWear, Math.round((tr.tires + Game.data.accidentTires) * 10) / 10);
+          tr.nodes.brakes = Math.min(100, Math.round(((tr.nodes.brakes || 0) + Game.data.accidentBrakes) * 10) / 10);
+          E.addRep(-Game.data.repCrashPenalty, 'Репутация −' + Game.data.repCrashPenalty + ': ДТП в пути');
+        }
+      }
+      // поломка двигателя: машина не выйдет на рейс до капремонта
+      if (t.engineFail) {
+        tr.engineBroken = true;
+        s.stats.breakdowns++;
+        E.addRep(-Game.data.repCrashPenalty, 'Репутация −' + Game.data.repCrashPenalty + ': поломка двигателя в пути');
+      }
     }
     // водитель устает: отдых теперь только по команде игрока
     var d2 = null;
@@ -974,6 +1219,8 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
         }
       });
     });
+    E.finishJobs(now);
+    E.ageTrucks(now);
     E.refreshMarket();
     E.refreshContracts();
     E.refreshSalon();
@@ -1105,17 +1352,17 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     return Math.min(15, Math.round(total * 10) / 10);
   };
 
-  // Механики: суммарное снижение износа за рейс (максимум 60%)
+  // Механики: суммарное снижение износа за рейс (максимум 60%); занятые работой бонус не дают
   E.mechanicWearReduction = function(){
     var total = 0;
-    E.staffOf('mechanic').forEach(function(m){ total += m.skill * 1.5; });
+    E.staffOf('mechanic').forEach(function(m){ if ((m.busyUntil || 0) <= Date.now()) total += m.skill * 1.5; });
     return Math.min(60, total) / 100;
   };
 
   // Механики потихоньку восстанавливают машины: 0,4% износа в час за очко мастерства
   E.autoMaintain = function(now){
     var s = Game.state;
-    var mechs = E.staffOf('mechanic');
+    var mechs = E.staffOf('mechanic').filter(function(m){ return (m.busyUntil || 0) <= now; }); // занятые не обслуживают
     if (!mechs.length) { s.lastMaintAt = now; return; }
     var hours = (now - (s.lastMaintAt || now)) / 3600000;
     if (hours < 0.5) return;
@@ -1128,6 +1375,27 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
       });
     }
     s.lastMaintAt = now;
+  };
+
+  // Возраст старит узлы даже в простое: +4 %/нед, у ездивших +7 %/нед.
+  // Начисление по метке времени ageWearAt — работает и офлайн, порциями не чаще 15 минут.
+  E.ageTrucks = function(now){
+    var s = Game.state;
+    s.trucks.forEach(function(tr){
+      var since = tr.ageWearAt || tr.boughtAt || now;
+      if (now - since < 15 * 60000) return;
+      var worked = E.isBusy(tr.uid) || s.trips.some(function(t){ return t.truckUid === tr.uid && t.startedAt >= since; });
+      var add = (worked ? Game.data.ageWeekActive : Game.data.ageWeekIdle) * (now - since) / (168 * 3600000);
+      var T = Game.truck(tr.tid);
+      var elec = !!(T && T.elec);
+      if (tr.nodes) {
+        Game.data.nodes.forEach(function(N){
+          if (N.noElec && elec) return;
+          tr.nodes[N.id] = Math.min(100, Math.round(((tr.nodes[N.id] || 0) + add) * 10) / 10);
+        });
+      }
+      tr.ageWearAt = now;
+    });
   };
 
   E.generateStaffMember = function(role){
@@ -1176,6 +1444,7 @@ Game.pick = function(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
     var p = null;
     s.staff.forEach(function(x){ if (x.uid === staffUid) p = x; });
     if (!p) return { ok: false, msg: 'Сотрудник не найден' };
+    if (p.busyUntil > Date.now()) return { ok: false, msg: 'Механик занят работой — дождитесь окончания' };
     s.staff = s.staff.filter(function(x){ return x.uid !== staffUid; });
     Game.save();
     return { ok: true, msg: '👋 ' + p.name + ' уволен' };

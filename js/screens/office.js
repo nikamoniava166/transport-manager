@@ -70,7 +70,7 @@ Game.screens.office = {
       var isAcc = p.role === 'accountant';
       var effect = isAcc
         ? '+' + (p.skill * 0.5).toLocaleString('ru-RU') + '% к оплате рейсов'
-        : '−' + (p.skill * 1.5).toLocaleString('ru-RU') + '% износа за рейс';
+        : '−' + (p.skill * 1.5).toLocaleString('ru-RU') + '% износа за рейс' + (!isAcc && (p.busyUntil || 0) > now ? ' · 🔧 занят: ' + Game.esc(p.busyNote || 'работа') + ' (до ' + new Date(p.busyUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ')' : '');
       return `
         <div class="list-item">
           <div class="li-ico">${isAcc ? Game.ico('calculator') : Game.ico('wrench')}</div>

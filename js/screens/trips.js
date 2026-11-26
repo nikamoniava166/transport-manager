@@ -11,6 +11,8 @@
         case 'police':     return '<span class="tag danger">👮 штраф ' + Game.fmt.money(ev.fine) + '</span>';
         case 'bonusload':  return '<span class="tag ok">📦 попутный +30%</span>';
         case 'breakdown':  return '<span class="tag danger">⚡ поломка</span>';
+        case 'accident':   return '<span class="tag danger">🚗 ДТП</span>';
+        case 'enginefail': return '<span class="tag danger">🛠 двигатель</span>';
       }
       return '';
     }).join(' ');

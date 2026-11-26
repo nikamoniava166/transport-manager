@@ -10,6 +10,13 @@
   function wearColor(w){ return w < 40 ? 'var(--ok)' : w < 70 ? 'var(--warn)' : 'var(--danger)'; }
   function flagLabel(f){ return Game.flagLabel(f, true); }
 
+  // максимальный износ видимых узлов оффера (сервис v4)
+  function worstNode(o){
+    var max = 0;
+    if (o.nodes) Game.data.nodes.forEach(function(N){ if ((o.nodes[N.id] || 0) > max) max = o.nodes[N.id]; });
+    return Math.round(max);
+  }
+
   // ---------- б/у грузовики ----------
 
   function renderUsed(body){
@@ -46,6 +53,7 @@
             <div class="li-title">${T.name} <span class="tag">Т${tier}</span></div>
             <div class="li-sub">${Game.fmt.ton(eff.cap)} груз · ${eff.speed} км/ч · ${eff.cons} ${eff.elec ? 'кВт·ч/100 км ' + Game.ico('zap') : 'л/100 км'} · надёжность ${eff.rel}%</div>
             <div class="li-sub">${Game.ico('route')} пробег ${Game.fmt.km(o.km)}${ups.length ? ' · ' + Game.ico('arrow-up') + ' ' + ups.join(', ') : ''}</div>
+            ${o.ageWeeks != null ? `<div class="li-sub">${Game.ico('calendar')} возраст ~${o.ageWeeks} нед · двигатель ${Math.round(o.engine || 0)}%${worstNode(o) ? ' · узлы до ' + worstNode(o) + '%' : ''} · ТО-пробег ${Game.fmt.km(o.serviceKm || 0)}</div>` : ''}
             <div class="wear">
               <div class="progress"><i style="width:${Math.min(100, o.wear)}%;background:${wearColor(o.wear)}"></i></div>
               <div class="val">состояние</div>

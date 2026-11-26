@@ -176,6 +176,15 @@ body{
 .wear .progress{flex:1}
 .wear .val{font-size:11px;color:var(--muted);min-width:64px;text-align:right;font-variant-numeric:tabular-nums}
 
+/* сетка узлов в панели обслуживания (сервис v4) */
+.ngrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin:8px 0}
+.nrow{display:flex;align-items:center;gap:6px;font-size:12px}
+.nrow .nname{min-width:78px;color:var(--muted);white-space:nowrap}
+.nrow .nbar{flex:1;height:6px;border-radius:3px;background:var(--led);border:1px solid var(--border);overflow:hidden}
+.nrow .nbar i{display:block;height:100%}
+.nrow .nval{min-width:36px;text-align:right;font-variant-numeric:tabular-nums}
+.nrow .btn.mini{margin-top:0;padding:5px 8px;font-size:11.5px}
+
 .muted{color:var(--muted)}
 .small{font-size:12px}
 .center{text-align:center}
