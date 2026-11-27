@@ -40,3 +40,13 @@ CREATE TABLE IF NOT EXISTS grants (
   created_at INTEGER NOT NULL,
   claimed_at INTEGER                   -- заполнено = забрано клиентом
 );
+
+-- Реферальная программа: пара «кто кого пригласил»; referee уникален —
+-- игрок учитывается как приглашённый только один раз, награда одноразовая (credited_at)
+CREATE TABLE IF NOT EXISTS referrals (
+  referee    INTEGER PRIMARY KEY,      -- Telegram user_id приглашённого
+  referrer   INTEGER NOT NULL,         -- Telegram user_id пригласившего
+  created_at INTEGER NOT NULL,
+  credited_at INTEGER                 -- заполнено = награда пригласившему выдана
+);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals (referrer);

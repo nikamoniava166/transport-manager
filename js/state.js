@@ -34,6 +34,9 @@
       market: { orders: [], restockAt: 0 },
       salon: { list: [], refreshAt: 0 },
       stars: { boostUntil: 0, lastMoneyAt: 0 },
+      refBy: 0,            // telegram_id пригласившего (из start_param ссылки), 0 = не по ссылке
+      refSent: false,      // «пришли по ссылке» уже доложено серверу (/refer)
+      refBonusTaken: false,// бонус новичка по ссылке уже выдан
       stats: { tripsDone: 0, earned: 0, spent: 0, km: 0, breakdowns: 0 },
       settings: { sound: true, haptic: true },
       achievements: {},
@@ -64,6 +67,10 @@
     if (!isFinite(out.reputation.points) || out.reputation.points < 0) out.reputation.points = 0;
     out.reputation.level = 0; // уровень всегда выводится из очков в E.repInfo()
     out.stars         = Object.assign({}, d.stars,         (st && st.stars)         || {});
+    // реферальная программа: кто пригласил, что уже доложено серверу, выдан ли бонус новичка
+    out.refBy = (st && Number(st.refBy)) || 0;
+    out.refSent = !!(st && st.refSent);
+    out.refBonusTaken = !!(st && st.refBonusTaken);
     out.achievements = (st && st.achievements && typeof st.achievements === 'object' && !Array.isArray(st.achievements)) ? st.achievements : {};
     out.finance      = (st && st.finance && typeof st.finance === 'object' && !Array.isArray(st.finance)) ? st.finance : {};
     out.daily        = Object.assign({}, d.daily, (st && st.daily) || {});

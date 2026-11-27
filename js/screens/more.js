@@ -10,6 +10,7 @@ Game.screens.more = {
     // Магазин Stars и рейтинг — только когда бэкенд подключён (js/net.js → BACKEND_URL)
     var shopHtml = '';
     var lbHtml = '';
+    var refHtml = '';
     if (Game.net && Game.net.enabled()) {
       var lvlNow = Game.levelInfo(s.xp).level;
       var moneyLeft = (s.stars.lastMoneyAt && Date.now() - s.stars.lastMoneyAt < 24 * 3600000)
@@ -48,6 +49,14 @@ Game.screens.more = {
             <button class="btn secondary" id="lb-load" style="margin-top:8px">Показать топ-20</button>
           </div>
         </div>`;
+      var refTotal = Game.ui.refTotal || 0;
+      refHtml = `
+        <div class="card">
+          <div class="card-title">${Game.ico('users')} Пригласить друзей</div>
+          <div class="small muted" style="margin-bottom:8px">Друг откроет игру по вашей ссылке: <b>+${Game.fmt.money(Game.data.refBonusNew)}</b> ему и <b>+${Game.fmt.money(Game.data.refBonusInvite)}</b> вам.</div>
+          <button class="btn secondary" id="ref-share">${Game.ico('send')} Поделиться ссылкой</button>
+          ${refTotal ? '<div class="small muted" style="margin-top:6px">Приглашено: ' + refTotal + ' · заработано на друзьях: ' + Game.fmt.money(refTotal * Game.data.refBonusInvite) + '</div>' : ''}
+        </div>`;
     }
 
     root.innerHTML = `
@@ -80,6 +89,7 @@ Game.screens.more = {
 
       ${shopHtml}
       ${lbHtml}
+      ${refHtml || ''}
 
       <div class="card">
         <div class="card-title">Настройки</div>
@@ -154,6 +164,9 @@ Game.screens.more = {
     }
     var lbBtn = document.getElementById('lb-load');
     if (lbBtn) lbBtn.onclick = loadLb;
+
+    var refBtn = document.getElementById('ref-share');
+    if (refBtn) refBtn.onclick = function(){ Game.net.shareInvite(); };
 
     var rb = document.getElementById('reset-btn');
     if (rb) {

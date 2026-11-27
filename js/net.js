@@ -101,6 +101,60 @@
     });
   };
 
+  // --- реферальная программа: ссылка с startapp=ref<id>, сервер хранит пары «кто кого пригласил» ---
+
+  // Долг нового игрока: «я пришёл по ссылке ref<id>» — отправляем один раз
+  N.refer = function(){
+    if (!N.enabled()) return;
+    var s = Game.state;
+    if (!s.refBy || s.refSent) return;
+    api('/refer', { referrer: s.refBy }, function(res){
+      if (res && res.ok) { s.refSent = true; Game.save(); }
+    });
+  };
+
+  // Забор награды за приглашённых друзей (одноразово на сервере, счётчик total — для карточки)
+  N.refClaim = function(){
+    if (!N.enabled()) return;
+    api('/refclaim', {}, function(res){
+      if (!res || !res.ok) return;
+      Game.ui.refTotal = res.total || 0;
+      if (res.count > 0) {
+        var sum = res.count * Game.data.refBonusInvite;
+        Game.state.money += sum;
+        Game.state.stats.earned += sum;
+        Game.economy.logOp('in', sum, 'Награда за друзей: пригласили ×' + res.count);
+        Game.save(); Game.updateHUD();
+        Game.haptic('ok');
+        Game.toast('👥 Друг' + Game.plural(res.count, ' начал', 'а начали', 'ей начали') + ' играть по вашей ссылке: +' + Game.fmt.money(sum), 'ok');
+        N.syncSoon();
+      }
+      if (Game.currentScreen === 'more') Game.navigate('more', true);
+    });
+  };
+
+  // Кнопка «Поделиться ссылкой»: стандартное окно Telegram или копирование в буфер в браузере
+  N.shareInvite = function(){
+    var link = Game.data.refLink + '?startapp=ref' + Game.userId;
+    var t = window.Telegram && window.Telegram.WebApp;
+    if (t && t.openTelegramLink) {
+      t.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(link) +
+        '&text=' + encodeURIComponent(Game.data.refShareText));
+      Game.haptic('tap');
+      return true;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link);
+        Game.toast('🔗 Ссылка скопирована — отправьте её другу');
+        Game.haptic('ok');
+        return true;
+      }
+    } catch (e) {}
+    Game.toast(link);
+    return true;
+  };
+
   // --- покупки за Stars: счёт у воркера → окно Telegram → активация ---
 
   // Активация счёта с повторами: вебхук подтверждает оплату и может прийти чуть позже клиента

@@ -113,6 +113,26 @@ Game.init = function(){
   Game.load();
   Game.updateHUD();
 
+  // Приглашение по ссылке (?startapp=ref<telegram_id>): фиксируем пригласившего
+  // и разово выдаём бонус новичка (журнал операций + тост чуть позже, после заставки)
+  try {
+    var refParam = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
+    var refMatch = /^ref(\d+)$/.exec(String(refParam));
+    if (refMatch && String(refMatch[1]) !== String(Game.userId) && !Game.state.refBonusTaken) {
+      Game.state.refBy = Number(refMatch[1]);
+      Game.state.refBonusTaken = true;
+      Game.state.money += Game.data.refBonusNew;
+      Game.state.stats.earned += Game.data.refBonusNew;
+      Game.economy.logOp('in', Game.data.refBonusNew, 'Бонус за приглашение друга');
+      Game.save();
+      Game.updateHUD();
+      setTimeout(function(){
+        Game.haptic('ok');
+        Game.toast('👥 Вы пришли по приглашению друга: +' + Game.fmt.money(Game.data.refBonusNew), 'ok');
+      }, 800);
+    }
+  } catch (e) {}
+
   // Офлайн-прогресс: доводим мир до «сейчас» молча и показываем сводку
   var r = Game.economy.settle(true);
   if (r.resolved > 0) {
@@ -128,6 +148,9 @@ Game.init = function(){
 
   // добор оплаченных, но не активированных покупок (закрыли приложение сразу после оплаты)
   if (Game.net && Game.net.enabled && Game.net.claimPending) Game.net.claimPending();
+
+  // рефералка: докладываем «пришёл по ссылке» и забираем награду за приглашённых друзей
+  if (Game.net && Game.net.enabled && Game.net.enabled()) { Game.net.refer(); Game.net.refClaim(); }
 
   var tabs = document.querySelectorAll('.tab');
   tabs.forEach(function(b){
@@ -174,6 +197,7 @@ Game.init = function(){
       if (Game.net && Game.net.syncNow) Game.net.syncNow(); // отправить прогресс в таблицу при уходе
     } else if (Game.net && Game.net.enabled && Game.net.claimGrants) {
       Game.net.claimGrants(); // могли выдать бонус, пока приложение было свёрнуто
+      Game.net.refClaim();    // и награда за друзей, пригласившие начали играть, пока нас не было
     }
   });
   window.addEventListener('beforeunload', function(){ Game.save(); });

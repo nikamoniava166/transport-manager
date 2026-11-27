@@ -234,6 +234,37 @@ export default {
       return json({ ok: true, invoices: rows.results || [] });
     }
 
+    // Реферальная программа: новый игрок докладывает «меня пригласили» — одна запись на игрока,
+    // самоприглашение исключено; сумму награды считает клиент (refBonusInvite в js/data.js)
+    if (url.pathname === '/refer') {
+      const ref = clampInt(body.referrer, 1, 1e12, 0);
+      if (!ref || ref === user.id) return json({ ok: false, msg: 'Некорректный пригласивший' });
+      const ins = await db.prepare(
+        'INSERT INTO referrals (referee, referrer, created_at) VALUES (?1, ?2, ?3) ' +
+        'ON CONFLICT(referee) DO NOTHING'
+      ).bind(user.id, ref, now).run();
+      const first = !!(ins && ins.meta && ins.meta.changes > 0);
+      return json({ ok: true, first: first });
+    }
+
+    // Награда пригласившему: сколько друзей уже начали играть и ещё не оплачены;
+    // сразу помечаем выданными (одноразово), счётчик total — для карточки «Ещё»
+    if (url.pathname === '/refclaim') {
+      const pend = await db.prepare(
+        'SELECT COUNT(*) AS n FROM referrals WHERE referrer = ?1 AND credited_at IS NULL'
+      ).bind(user.id).first();
+      const count = pend ? pend.n : 0;
+      if (count > 0) {
+        await db.prepare(
+          'UPDATE referrals SET credited_at = ?1 WHERE referrer = ?2 AND credited_at IS NULL'
+        ).bind(now, user.id).run();
+      }
+      const tot = await db.prepare(
+        'SELECT COUNT(*) AS n FROM referrals WHERE referrer = ?1'
+      ).bind(user.id).first();
+      return json({ ok: true, count: count, total: tot ? tot.n : 0 });
+    }
+
     return json({ ok: false, msg: 'Не найдено' }, 404);
   }
 };
