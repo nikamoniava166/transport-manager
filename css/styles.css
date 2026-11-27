@@ -183,7 +183,7 @@ body{
 .nrow .nbar{flex:1;min-width:14px;height:6px;border-radius:3px;background:var(--led);border:1px solid var(--border);overflow:hidden}
 .nrow .nbar i{display:block;height:100%}
 .nrow .nval{min-width:34px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
-.nrow .btn.mini{margin-top:0;padding:5px 8px;font-size:11.5px;white-space:nowrap;flex:none;max-width:100%}
+.nrow .btn.mini{margin-top:0;padding:5px 8px;font-size:11.5px;white-space:nowrap;flex:none;width:auto;max-width:100%}
 
 .muted{color:var(--muted)}
 .small{font-size:12px}
