@@ -113,6 +113,25 @@ export default {
           ).bind(Date.now(), Number(m[1]), Number(m[2])).run();
         }
       }
+
+      // Приветствие на /start: игрок, пришедший в бота напрямую (каталог, ссылка, поиск),
+      // не должен оставаться в пустом чате — отвечаем кратким описанием и кнопкой «Играть»
+      const msg = body && body.message;
+      if (msg && msg.text === '/start' && msg.chat && msg.chat.id) {
+        await botApi(env, 'sendMessage', {
+          chat_id: msg.chat.id,
+          text: '🚛 «Менеджер перевозок» — экономический менеджер грузоперевозок.\n\n' +
+                'Покупай грузовики, нанимай водителей и вози грузы по России — от Газели до автопоездов. ' +
+                'Рейсы идут в реальном времени: компания работает, даже когда ты офлайн.\n\n' +
+                '🎮 Управление компании: @RussianTruckManager_bot/RussianTruckManager\n' +
+                '🔒 Конфиденциальность: nikamoniava166.github.io/transport-manager/privacy.html',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🚚 Играть', url: 'https://t.me/RussianTruckManager_bot/RussianTruckManager' }
+            ]]
+          }
+        });
+      }
       return json({ ok: true });
     }
 
